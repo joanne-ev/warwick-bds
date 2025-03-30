@@ -1,0 +1,373 @@
+---
+title: "5637058_a1"
+output: pdf_document
+date: "2024-11-10"
+header-includes:
+  \usepackage{fvextra}
+  \DefineVerbatimEnvironment{Highlighting}{Verbatim}{breaklines,commandchars=\\\{\}}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Task 1 Evaluation of a Simulation
+
+Although each of us is different, it is often sensible to base our expectations of other’s perceptions on our own perceptions (e.g., of whether something is worthwhile).
+
+This raises important research questions (in applied fields such as marketing): ***if a person values something highly (or finds it useful), then to what extent are they likely to expect others to value the same thing highly (or find it similarly useful)?***
+
+Here we consider an example where individuals who are interested in buying a new house (yet to be built!) perceive the worth of a simulation that aims to show them what it would be like to walk around inside the new house.
+
+**To rate the simulation app**, the participants are asked to use it and rate the product on two scales:
+
+1.  **how useful they found the simulation**
+2.  **how much they would be willing to pay to use the simulation again if considering another house**.
+3.  **how they reckoned that someone else (a stranger) would rate the simulation app on these scales**.
+
+The file `house_sim.csv` contains simulated data about perceived values, where the participants were randomly split into two groups to perform different tasks (variable `Task`).
+
+-   In the `WTP` group, the participants reported how much they would be willing to pay to use the app (from 0 to £100) when considering an alternative house, and what they thought that a stranger (variable `Stranger`) would be willing to pay for the app after having once experienced it.
+
+-   In the `Usefulness` group, the participants rated how useful they found the app (on a scale of 0 to 100) for themselves (variable `Participant`) and how they thought that others would rate it (variable `Stranger`).
+
+-   The file also includes which rating was performed first (`Sequence`) and the participant identifiers (variable `Pid`).
+
+**Please analyse the data using a linear regression model.**
+
+**The main research questions are**
+
+1.  **whether ratings for oneself predict expectations about strangers**
+2.  **whether they do so equally for both groups (i.e., level of `Task` factor).**
+
+Present the results as you would in a paper, using APA format. In other words, **describe your statistical model and results and describe the conclusions with regards to the research questions**. In the first section of your answer for this task, **include only one figure** (which may contain multiple panels), with an appropriate figure caption.
+
+\newpage
+
+## Part 1: Results Description
+
+An experiment was conducted to investigate whether an individual's valuation of an entity makes them expect others to value it similarly; the entity here is the housing simulation app. There are two main research questions: First, do individual's ratings (i.e., Participant Ratings) of the simulation predict their expectations about how strangers will rate the simulation (i.e., Stranger Ratings)? Second, are these predictions equal across both groups (i.e., Usefulness and WTP)?
+
+250 participants were asked to use the simulation app and rate the simulation's *Usefulness* (rated between 0 to 100) and their *Willingness to Pay* (WTP) for the simulation (between £0 to £100). Participants were then asked what they thought strangers would rate the simulation using the same constructs and scales.
+
+Two regression models were developed to investigate the two research questions. For the first question, a simple linear regression model was generated and found that Participant Ratings was a significant positive predictor of Stranger Ratings ($\beta= 0.98$ , $p < .001$) (as shown by the black line in Figure 1). The overall linear regression model was significant ($F(1, 248)=679.2$, $p < .001$) with where 73% of the variance in Stranger Rating can be explained by Participant Rating (adjusted $R^2 = 0.732$). This regression model suggests that Participant Rating of the simulation does predict Stranger Rating.
+
+For the second question a multiple regression model was generated to investigate the interaction effect between Participant Ratings and Tasks on Stranger Ratings (i.e., how Stranger Ratings vary with Participants Ratings in Usefulness versus WTP Task). The overall multiple regression model was significant ($F(3, 246)=242.6$, $p < .001$) where 74% of the variance in Stranger Rating can be explained by Participant Rating and Task type (adjusted $R^2 = 0.744$). There was a significant main effect of Participant Ratings on Stranger Ratings ($\beta= 1.03$ , $p < .001$) suggesting Stranger Ratings can be predicted by Participant Ratings (in line with results from the previous simple linear model). There was no significant main effect of Task type on Stranger Ratings ($\beta= 11.28$ , $p = 0.175$) thereby suggesting Stranger Rating does not differ between Task types in a statistically significant way. However, a significant interaction effect was present ($\beta= -0.36$ $p = 0.005$) suggesting the relationship between Participant Ratings and Stranger Ratings significantly differed depending on whether the Task involved rating Usefulness or WTP. Post hoc tests looking at conditional slopes found Stranger Ratings were significantly higher on the Usefulness task than on the WTP task ($M = 0.36$, $SE = 0.13$ , $t(246) = 2.83$, $p = .005$) thus suggesting that predictions were not equal across both groups. This multiple regression model is visualised in Figure 1 below.
+
+![](images/clipboard-4068161981.png)
+
+*Figure 1. Regression models predicting Stranger ratings from Participant ratings. The simple linear regression modelling Stranger Ratings and Participant Ratings involve the entire dataset is shown by the black line. Each datapoint within the entire dataset is shown as a cross. The coloured elements looks at individual Task-specific linear models: 'Usefulness' (red line) and 'Willingness to Pay (WTP)' (blue line). Each datapoint is related to either Usefulness (as red crosses) or WTP (as blue crosses).*
+
+\newpage
+
+## Part 2: R Code
+
+```{r Packages}
+# loading packages
+library(tidyverse)
+library(ggplot2)
+library(cowplot)
+library(emmeans)
+```
+
+```{r Data_House}
+df_house <- read_csv("house_sim.csv")
+
+# previewing dataset
+head(df_house)
+```
+
+```{r RQ1_Significant}
+# RQ1: Do people's ratings of the simulation predict their expectations about how strangers will rate the simulation?
+
+# Linear model based on entire dataset 
+lm(Stranger ~ Participant, df_house) %>% 
+  summary()
+```
+
+```{r RQ2}
+# RQ2: Are these predictions equal across both groups (i.e., Usefulness and WTP)
+
+# Checking number of rows 
+df_rows <- nrow(df_house)
+df_Use <- sum(df_house$Task == 'Usefulness')
+df_WTP <- sum(df_house$Task == 'WTP')
+
+df_rows - df_Use - df_WTP
+# Sum of Usefulness and WTP rows do not equal total rows in df_house (there are 7 missing rows)
+```
+
+```{r Recoding}
+# Checking levels of Task 
+unique(df_house$Task)
+
+# Recode Usefullness to Usefulness
+df_house_new <- df_house %>%
+  mutate(Task = recode(Task, 'Usefullness' = 'Usefulness'))
+
+# Check rows add up
+unique(df_house_new$Task)
+
+df_rows <- nrow(df_house_new)
+df_Use <- sum(df_house_new$Task == 'Usefulness')
+df_WTP <- sum(df_house_new$Task == 'WTP')
+
+df_rows - df_Use - df_WTP
+```
+
+```{r Factors}
+# Establish factors for Task
+df_house_new$Task <- factor(df_house_new$Task)
+
+levels(df_house_new$Task)
+```
+
+```{r RQ2_MRegression}
+# RQ2: Are these predictions equal across both groups (i.e., Usefulness and WTP)
+
+RQ2_lm <- lm(Stranger ~ Participant * Task, data = df_house_new)
+
+RQ2_lm %>% 
+  summary()
+```
+
+```{r Conditional_Slopes}
+# Comparing the slopes across the levels of the Task
+emtrends(RQ2_lm, pairwise ~ Task, var = "Participant") %>%
+  summary()
+```
+
+```{r RQ1_Plot}
+# RQ1: Do people's ratings of the simulation predict their expectations about how strangers will rate the simulation?
+
+RQ1_plot <- ggplot(data = df_house_new, aes(x = Participant, y = Stranger)) + 
+  
+  geom_point(data = df_house_new, aes(x = Participant, y = Stranger),
+             pch = 4, colour = "darkgrey") +
+  geom_smooth(data = df_house_new, aes(x = Participant, y = Stranger),
+              se = FALSE, method = lm, colour = "black") +
+  
+  labs(title = "Fig 1a. Relationship between Participant and Stranger Ratings", 
+       x = "Participant Ratings", y = "Stranger Ratings") +
+  
+  theme_bw() +
+  theme( panel.grid.major = element_blank(),
+         panel.grid.minor = element_blank() )
+
+RQ1_plot
+```
+
+```{r RQ2_Plot}
+RQ2_plot <- ggplot(df_house_new,
+       aes(x = Participant, y = Stranger, colour = Task)) + 
+  
+  geom_point(pch = 4) +
+  geom_smooth(se = FALSE, method = "lm")  +
+  
+  labs(title = "Fig 1b. Relationship between Participant and \nStranger Ratings across Tasks", 
+       x = "Participant Ratings", y = "Stranger Ratings") +
+  
+  theme_bw() +
+  theme( panel.grid.major = element_blank(),
+         panel.grid.minor = element_blank() )
+
+RQ2_plot
+```
+
+```{r Combined_Plots, fig.height=5, fig.width=7}
+ggplot(df_house_new,
+       aes(x = Participant, y = Stranger, colour = Task)) + 
+  
+  geom_smooth(data = df_house_new, aes(x = Participant, y = Stranger),
+              se = FALSE, method = lm, colour = "black") +  
+  
+  geom_point(pch = 4) +
+  geom_smooth(se = FALSE, method = "lm")  +
+  
+
+  
+  labs(x = "Participant Ratings", y = "Stranger Ratings") +
+  
+  theme_bw() +
+  theme( panel.grid.major = element_blank(),
+         panel.grid.minor = element_blank() )
+```
+
+\newpage
+
+# Task 2: Student Accommodation
+
+Imagine a student at the early stage of considering whether to rent a property (i.e., before they have choice forced on them!).
+
+Perceptions of value will often depend on many factors; some are purely personal (e.g., colours and decor). In this case, we will *consider an aspect which is numerical and where most people would agree on the ordering with respect to that component: **the floor space of the bedroom, where the larger the value, the better the property is in that (one) regard.***
+
+As there are many aspects to consider when renting, that one aspect may not dominate the perceived worth; there will often be a lot of noise in the data.
+
+***One research question on this topic is whether the objective value (i.e., the amount of floor space, regardless floor space of other properties) or the comparative rank (i.e., floor space relative to other properties seen recently) is a better predictor of subjective value.***
+
+Imagine a set of six properties, four of which have less than $14m^2$ of floor space, one has exactly $14m^2$, and one property $20m^2$ of floor space.
+
+-   In this case, the rooms with $14m^2$ and $20m^2$ of space both have a high comparative rank (of 2 and 1, respectively).
+
+-   However, the room with $14m^2$ has a medium objective value, whereas the room with $20m^2$ has a high objective value.
+
+-   If, in the option list, the $20m^2$ room were replaced by an option with $16m^2$ of space, then it would still have the best comparative rank despite no longer having such a high objective value.
+
+-   Or, by making the distribution of attribute values in the set even more extreme (replacing it by a room with an even larger space), the objective value and comparative rank could be pitted against each other more strongly.
+
+The file `accommodation.csv` contains data from a (simulated) factorial experiment that could be used to investigate how the objective values and comparative ranks play into valuation.
+
+Participants were presented with pictures and statements about the properties (including the floor space values). The type of `rank` (or value) was manipulated, either `comparative` (rank) or `objective` (value); in each case toward having a `low`, `medium`, or `high` rank.
+
+There were two types of student `valuer`: `undergrad` and `postgrad`.
+
+*Participants’ perceptions were obtained by eliciting willing-to-pay (`wtp`) values (in £, per week); this is the dependent variable.*
+
+Please analyse the data using an ANOVA (e.g., using `afex`) and present the results as you would for a paper, using APA format. In other words, describe your statistical model and results and describe the conclusions with regard to the research question. Be careful not to draw unwarranted causal conclusions. In the first section for this task, include only one figure (which may contain multiple panels), with an appropriate figure caption.
+
+\newpage
+
+## Part 1: Results Description
+
+Is the objective value (i.e., actual quantity) or the comparative rank (i.e., quantity relative to other quantities) a better predictor of subjective valuation in deciding whether to rent a property? To answer this research question, 240 participants were presented with images and descriptions of properties where the floor space of these properties were presented as either comparative rankings or objective values. The two independent variables (IVs) were the Type of rank (i.e., Comparative rank, Objective values) and the Rank itself (i.e., High, Medium, Low). The dependent variable was individual subjective Valuation measured by participants' Willingness To Pay (WTP) to rent the property. Figure 2 shows the distribution and means of WTP across the two IVs and suggests that there is no visible difference between the two types of ranks on WTP however a visible difference between the individual Ranks. In order to statistically validate these visual interpretations, a two-way ANOVA was conducted.
+
+The two-way ANOVA showed no significant main effect of the Type of ranks on WTP - $F(1, 234) = 0.24$, $p = 0.627$. There was a significant main effect of the individual rankings on WTP - $F(2, 234) = 30.5$, $p < .001$ suggesting WTP significantly differed depending on the level of Rank. However, there was no significant interaction effect between Type of rank and level of Rank - $F(2, 234) = 0.45$, $p = 0.637$.
+
+Further contrasts were conducted with the Bonferroni-Holm correction for the significant main effect of Ranks. These contrasts found a significantly greater WTP in High Ranks compared to Medium Ranks ($\Delta = 17.7$, $SE = 4.3$, $t(234) = 4.11$, $p = .0001$). There is a significantly greater WTP in High compared to Low ranks ($\Delta = 33.6$, $SE = 4.3$, $t(234) = 7.80$, $p < .0001$). There is a significantly greater WTP in Medium compared to Low ranks ($\Delta = 15.9$, $SE = 4.3$, $t(234) = 3.69$, $p = .0003$). Therefore, these findings suggest that rather than the Type of rank, it is the levels of Rank that may be a better predictor of subjective valuation in deciding whether to rent a property.
+
+![](images/clipboard-1054590118.png)
+
+*Figure 2.* *Boxplots showing the varying distributions of WTP across the different Types of ranks (comparative rank in red, objective value in blue) and levels of Rank (high, medium, low). The individual points shown within each boxplot represent the means for each combined category (e.g., the red circle on the most left boxplot is the mean for the high comparative condition) while the lines on the points represent the error bars.*
+
+\newpage
+
+## Part 2: R Code
+
+```{r Packages2}
+
+library(car)
+library(afex)
+library(emmeans)
+```
+
+```{r Reading_data2}
+
+df_acc <- read.csv("accommodation.csv")
+
+head(df_acc)
+```
+
+```{r Repeated_observations}
+
+df_acc %>% 
+  # Count number of observations (rows) per ID
+  count(id) %>% 
+  # Find which IDs have more than 1 observations (rows)
+  filter(n > 1)
+### When we run the above code, we can see that three IDs (4, 9, 238) have repeated entries
+
+
+# View both original and duplicated observations 
+df_acc %>% 
+  filter(id == 4 | id == 9 | id == 238)
+### Here we can see the information is exactly the same across all variables so we can safely delete the duplicates
+
+
+# Remove duplicates observations (rows) from the overall dataframe
+df_acc_new <- df_acc[!duplicated(df_acc), ]
+head(df_acc_new, 10)
+
+# Check to ensure duplicates are not included in the new dataframe
+df_acc_new %>% 
+  filter(id == 4 | id == 9 | id == 238)
+```
+
+```{r Final_dataset}
+
+head(df_acc_new, 10)
+```
+
+```{r Factors2}
+df_acc_new$type <- factor(df_acc_new$type)  
+# No defined levels because there is no specified ranking between the levels (by default factors are ranked alphabetically)
+
+df_acc_new$rank <- factor(df_acc_new$rank, levels = c("high", "medium", "low")) 
+# Levels are defined because there is a specified ranking between the levels
+
+levels(df_acc_new$type)
+levels(df_acc_new$rank)
+```
+
+```{r}
+colnames(df_acc_new)
+```
+
+```{r ANOVA_car}
+afex::set_sum_contrasts()
+
+acc_lm <- lm(wtp ~ type * rank, data = df_acc_new)
+
+Anova(acc_lm, type = 3)
+```
+
+```{r ANOVA_afex}
+
+acc_anova <- aov_ez(id = "id",
+                    dv = "wtp",
+                    data = df_acc_new,
+                    between = c("type", "rank"))
+
+acc_anova
+```
+
+```{r Contrasts}
+# Reference grid
+acc_em <- emmeans(acc_anova, "rank")
+
+# Set of contrasts 
+con <- list(
+  high_med = c(1, -1, 0),
+  high_low = c(1, 0, -1),
+  med_low = c(0, 1, -1)
+)
+
+contrast(acc_em, con, adjust = "holm")
+```
+
+```{r Plot, fig.width=7, fig.height=5}
+
+afex_plot(object = acc_anova,
+          x = "rank",
+          trace = "type",
+          mapping = c("colour", "shape"),
+          data_geom = geom_boxplot,
+          dodge = 0.85,
+          legend_title = "Type"
+          ) +
+  
+  labs(x = "Rank", y = "Willingness to Pay (£)") +
+  
+  scale_x_discrete( expand = c(0.2, 0.2) ) +
+  
+  theme_bw() +
+  theme( panel.grid.major = element_blank(),
+         panel.grid.minor = element_blank() )
+```
+
+```{r}
+afex_plot(object = acc_anova,
+          x = "rank",
+          mapping = c("colour", "shape"),
+          data_geom = geom_boxplot,
+          dodge = 0.85,
+          legend_title = "Type"
+          ) +
+  
+  labs(x = "Rank", y = "Willingness to Pay (£)") +
+  
+  scale_x_discrete( expand = c(0.2, 0.2) ) +
+  
+  theme_bw() +
+  theme( panel.grid.major = element_blank(),
+         panel.grid.minor = element_blank() )
+```
