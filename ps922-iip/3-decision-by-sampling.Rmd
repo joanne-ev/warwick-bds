@@ -1,0 +1,209 @@
+---
+title: "Part 3 Decision by Sampling (DbS)"
+output: pdf_document
+
+header-includes:
+  \usepackage{fvextra}
+  \DefineVerbatimEnvironment{Highlighting}{Verbatim}{breaklines,commandchars=\\\{\}}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r Library}
+library(tidyverse)
+```
+
+# Task 3 Explore the use of DbS to predict subjective judgement by sampling
+
+1.  **Generate a large sample of positively-skewed random numbers from a beta distribution**
+
+    -   **Example: `LTM <- 20 * rbeta(1000, 1.2, 4)`**
+
+        -   This gives a sample of 1000 random values between 0 and 20 that follow a Beta distribution where $\alpha = 1.2 \text{ and } \beta = 4$
+
+        -   The `rbeta()` function in R generates random numbers from the *Beta distribution*, which is defined by two shape parameters: `shape1` ( $\alpha$ ) and `shape2` ( $\beta$ ).
+
+            -   When `shape1` ( $\alpha$ ) \> `shape2` ( $\beta$ ), the Beta distribution is *negatively* *skewed*
+
+            -   When `shape1` \< `shape2`, the Beta distribution is *positively* *skewed*
+
+            -   When `shape1` = `shape2`, the Beta distribution is *symmetrical*
+
+2.  **Draw a histogram of these numbers using `hist`**
+
+    ```{r Histogram}
+
+    # CREATE A POSITIVELY SKEWED SAMPLE BASED ON A BETA DISTRIBUTION
+    set.seed(1)
+    pskew_sample <- 20 * rbeta(1000, 1.2, 4)
+
+    # CONVERT THE SAMPLE VECTOR INTO A TIBBLE
+    pskew_data <- tibble(values = pskew_sample)
+
+    # FIND THE MAX AND MIN VALUES IN THE SAMPLE 
+    pskew_max <- round(max(pskew_data$values), 0)
+    pskew_min <- min(pskew_data$values)
+
+    # CREATE HISTOGRAM
+    hist(pskew_data$values,
+         breaks = seq(0, pskew_max, 1),
+         col = "white", border = "black",
+         main = "Histogram of Positive Skewed Sample ",
+         xlab = "Values",
+         xlim = c(0, pskew_max)
+         )
+
+    ## Subtitle explaining the distribution
+    mtext("Beta distribution (alpha = 1.2, beta = 4)", side = 3, line = 0.5, cex = 0.8)
+
+    ```
+
+3.  **Calculate the subjective judgement of magnitudes 1 through 20 based on a DbS strategy and sample size of 15**
+
+    $$
+    \text{Subjective Value} = \frac{n_{lower}}{n_{higher} + n_{lower}}
+    $$
+
+    ```{r Function}
+    ### FUNCTION TO CALCULATE DBS ###
+
+    DBS <- function(magnitudes_list, sample_n) {
+      
+      # SET SEED FOR REPRODUCIBILITY 
+      set.seed(2)
+      
+      
+      # GENERATE SAMPLES
+      data <- sample(magnitudes_list, size = sample_n, replace = FALSE)
+
+      
+      # CREATE AN EMPTY TIBBLE
+      table <- tibble(element = numeric(0),
+                      lower = list(), 
+                      higher = list())
+
+      
+      for (i in seq_along(data)) {
+        
+        element <- data[i]          ## Select element
+        elements_comp <- data[-i]   ## Select remaining elements minus the selected element
+        
+        
+        # ESTABLISH EMPTY VARIABLES
+        higher <- numeric(0)
+        lower <- numeric(0)
+        
+        
+        # COMPARE ELEMENTS
+        for (j in seq_along(elements_comp)) {
+          
+          ## If remaining element is greater than selected element add it to higher vector
+          if (element > elements_comp[j]) {
+            higher <- c(higher, elements_comp[j])
+          } 
+          
+          ## If remaining element is less than selected element add it to lower vector
+          else {
+            lower <- c(lower, elements_comp[j])
+          }
+        }
+        
+        
+        # ADD VECTORS AS A LIST INTO THE TIBBLE TO MAKE IT EASIER TO IDENTIFY THE NUMBER OF ELEMENTS IN EACH VARIABLE (I.E., HIGHER OR LOWER)
+        table <- add_row(table, element = element, 
+                         lower = list(lower),
+                         higher = list(higher))
+      }
+      
+      
+      # CREATE A NEW DBS TIBBLE FROM TABLE
+      dbs_table <- table %>% 
+        
+        as_tibble() %>% 
+        
+        mutate(
+          ## New column applying the DbS equation
+          subjective_judgment = sapply(lower, length) / (sapply(lower, length) + sapply(higher, length)),
+          
+          ## New column identifying sample size 
+          sample_size = sample_n,
+          
+          ## Establishing unique sample sizes as factors (useful for plotting)
+          sample_size = factor(sample_size, levels = unique(sample_size))
+          )
+      
+      dbs_table
+      
+    }
+    ```
+
+4.  **Vary sample size, skew of distribution**
+
+    ```{r Sample_sizes}
+    # VARYING SAMPLE SIZES
+    n_5 <- DBS(c(1:20), 5)
+    n_10 <- DBS(c(1:20), 10)
+    n_15 <- DBS(c(1:20), 15)
+    n_20 <- DBS(c(1:20), 20)
+
+    # COMBINING ALL TIBBLES INTO ONE TIBBLE
+    all_data <- bind_rows(n_5, n_10, n_15, n_20)
+
+    print(all_data)
+
+    # PLOTS
+    ggplot(data = all_data, 
+           aes(x = element, y = subjective_judgment, colour = sample_size)) +
+      geom_point() +
+      geom_line() + 
+      
+      scale_x_continuous(name = "Randomly sampled element", 
+                         breaks = seq(0, 20, 4)) +
+      scale_y_continuous(name = "Subjective Judgement",
+                         breaks = seq(0, 1, 0.1)) +
+      labs(colour = "Sample size") +
+      
+      theme_bw()
+    ```
+
+    ```{r Distributions}
+
+    # VARYING DISTRIBUTION
+    nskew_sample <- 20 * rbeta(20, 4, 1.2)
+    pskew_sample <- 20 * rbeta(20, 1.2, 4)
+    sskew_sample <- 20 * rbeta(20, 4, 4)
+
+    nskew <- DBS(nskew_sample, 20)
+    pskew <- DBS(pskew_sample, 20)
+    sskew <- DBS(sskew_sample, 20)
+
+    nskew <- nskew %>% 
+      mutate(skew = "Negative")
+
+    pskew <- pskew %>% 
+      mutate(skew = "Positive")
+
+    sskew <- sskew %>% 
+      mutate(skew = "Symmetrical")
+
+    all_data <- bind_rows(nskew, pskew, sskew)
+
+    all_data <- all_data %>% 
+      mutate(skew = factor(skew, levels = unique(skew)))
+
+    print(all_data)
+
+    # PLOT
+    ggplot(data = all_data, 
+           aes(x = element, y = subjective_judgment, colour = skew)) + 
+      geom_point() +
+      geom_line() +
+      scale_x_continuous(name = "Randomly Sampled Element",
+                         breaks = seq(0, 22, 2)) +
+      scale_y_continuous(name = "Subjective Judgement",
+                         breaks = seq(0, 1, 0.1)) +
+      labs(colour = "Skew") +
+      theme_bw()
+    ```

@@ -1,0 +1,297 @@
+---
+title: "Part 4 Agent Based Modelling (ABM)"
+output: pdf_document
+
+header-includes:
+  \usepackage{fvextra}
+  \DefineVerbatimEnvironment{Highlighting}{Verbatim}{breaklines,commandchars=\\\{\}}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Task 4 Explore and extend a simple Schelling segregation model
+
+NOTE: DO NOT RUN FUNCTIONS IN RMD FILE RUN IN R FILE
+
+## Circshift
+
+```{r Circshift, eval=FALSE, echo=TRUE}
+### CIRCULAR SHIFT FUNCTION ###
+
+circshift <- function(x_to_be_shifted, shift_amount) {
+  # Check for NULL input
+  if (is.null(x_to_be_shifted)) return(x_to_be_shifted)
+  
+  #  Circular Shift for a Vector (1D)
+  if (is.vector(x_to_be_shifted) && length(shift_amount) == 1) {
+    n <- length(x_to_be_shifted)
+    s <- shift_amount %% n
+    x_to_be_shifted <- x_to_be_shifted[(1:n-s-1) %% n + 1]
+  } 
+  
+  # Circular Shift for a Matrix (2D)
+  else if (is.matrix(x_to_be_shifted) && length(shift_amount) == 2) {
+    n <- nrow(x_to_be_shifted)
+    m <- ncol(x_to_be_shifted)
+    s1 <- shift_amount[1] %% n
+    s2 <- shift_amount[2] %% m
+    x_to_be_shifted <- x_to_be_shifted[(1:n-s1-1) %% n + 1, (1:m-s2-1) %% m + 1]
+  } 
+  
+  # Error Handling
+  else
+    stop("Length of 'shift_amount' must be equal to the number of dimensions of 'x_to_be_shifted'.")
+  
+  # Returning the Shifted Vector or Matrix
+  return(x_to_be_shifted)
+}
+```
+
+\newpage
+
+## Schelling Rules
+
+1.  Academics are arranged in a spatial grid
+
+2.  Each academic looks at their four (horizontal and vertical) neighbours
+
+3.  An economist is unhappy if they have \>1 psychologists as neighbours
+
+    A psychologist is unhappy if they have \>1 economists as neighbours
+
+4.  On each time cycle, a random unhappy economist exchanges position with a random unhappy psychologist
+
+5.  Happy academics don’t move
+
+```{r Basic_Schelling_Function, eval=FALSE, echo=TRUE}
+### BASIC SCHELLING FUNCTION ###
+
+
+schelling_basic <- function(nside_inp) {
+  ## STEP 1: SET UP WORLD WITH RANDOMLY POSITIONED ACADEMICS
+  nside <- nside_inp  ## Number of agents on each side of the matrix
+
+  ### Create an nside-by-nside matrix of random numbers between 0 and 1
+  rand_world <- matrix(runif(nside^2, 0, 1),   # Generates nside^2 random numbers from a uniform distribution
+                       nside,                  # Number of rows
+                       nside                   # Number of columns
+                       )
+
+  ### Assign agents to be either Psychologists (0) or Economists (1)
+  world <- (rand_world > .5) * 1
+  #### If agent in rand_world is more than 0.5 it is assigned TRUE otherwise it is assigned FALSE. The boolean is then multiplied by 1 to return a numeric value 1 (TRUE = Economist) or 0 (FALSE = Psychologist)
+
+  #### Alternative code: world = round(rand_world)
+  ##### Works similarly as the above (i.e., if greater than 0.5, the agent is rounded to 1 and is labelled an Economist)
+
+  ## Set up a colourmap where green represents Psychologists and red represents Economists
+  agent_cols <- c(rgb(0, 1, 0), rgb(1, 0, 0))
+
+
+  ## STEP 2: HAVE ACADEMICS CHECK THEIR NEIGHBOURS
+
+  ### Give these temporary variables high values just to satisfy the while condition
+  n_sad_econs <- nside^2
+  n_sad_psychs <- nside^2
+
+  while( min( c(n_sad_econs, n_sad_psychs) ) > 50 ) {
+    ### Calculate number of Economists surrounding each agent
+    A <- circshift(world, c(1, 0))         # Shift one row down and wrap round
+    B <- circshift(world, c(-1, 0))        # Shift one row up and wrap round
+    C <- circshift(world, c(0, 1))         # Shift one col right and wrap round
+    D <- circshift(world, c(0, -1))        # Shift one col left and wrap round
+    n_econ <- A + B + C + D                # Now matrix `n_econ` has the number of Economists neighbours for each person in world
+
+
+  ## STEP 3: IDENTIFY SAD ECONOMISTS AND PSCYHOLOGISTS (still in the while loop)
+
+    ### Find sad Economists (i.e. < 3 Economists as neighbours ~ > 1 Psychologists as neighbours)
+    sad_econs <- world * (n_econ < 3) * 1
+
+    ### Find sad Psychologists (i.e. > 1 Economists as neighbours)
+    sad_psychs <- abs(world - 1) * (n_econ > 1) * 1
+
+    ### Count the number of sad Psychologists and Economists
+    n_sad_econs <- sum(sad_econs)
+    n_sad_psychs <- sum(sad_psychs)
+
+
+  ## STEP 4: SWAP SAD ACADEMICS (still in the while loop)
+
+    ### Choose a random sad Economist and change to be a Psychologist
+    w <- which(sad_econs > 0, arr.ind = TRUE)              # Get the row and col indices (arr.ind = TRUE) of all sad Economists (sad_econs > 0)
+    index <- ceiling(runif(1, 0, 1) * n_sad_econs)         # Choose a random sad Economist
+    world[w[index, 1], w[index, 2]] <- 0                   # Change the Economist to a Psychologist
+
+    ### Choose a random sad Psychologist and change to be an Economist
+    w <- which(sad_psychs > 0, arr.ind = TRUE)            # Get the row and col indices of all sad Psychologists
+    index <- ceiling(runif(1, 0, 1) * n_sad_psychs)       # Choose a random sad Economist
+    world[w[index, 1], w[index, 2]] <- 1                  # Change the Economist to a Psychologist
+
+  ## STEP 5: DRAW THE STATE OF THE WORLD
+    
+    image(world, col = agent_cols)
+    Sys.sleep(0.2)      # Update the figure each time it goes round
+
+  }
+}
+```
+
+\newpage
+
+## Task 4.1: Understand and extend the code.
+
+```{r Schelling_Final_Function, eval=FALSE, echo=TRUE}
+### EDITED SCHELLING FUNCTION ###
+
+
+schelling_final_model <- function(nside_inp, psych_n, econ_econ, psych_econ) {
+  
+  # STEP 1: SET UP WORLD WITH RANDOMLY POSITIONED ACADEMICS
+  ## CHANGES MADE FOR LARGER NEIGHBOURHOODS
+  nside <- nside_inp     ## Number of agents on each side of the matrix
+
+  ### Create an nside-by-nside matrix of random numbers between 0 and 1
+  rand_world <- matrix(runif(nside^2, 0, 1),   # Generates nside^2 random numbers from a uniform distribution
+                       nside,                  # Number of rows
+                       nside                   # Number of columns
+                       )
+
+  ### CHANGES MADE SO THERE ARE MORE PSYCHOLOGISTS THAN ECONOMISTS
+  ### Assign agents to be either Psychologists (0) or Economists (1)
+  world <- (rand_world > psych_n) * 1
+  #### If agent in rand_world is more than `psych_n` it is assigned TRUE otherwise it is assigned FALSE. The boolean is then multiplied by 1 to return a numeric value 1 (TRUE = Economist) or 0 (FALSE = Psychologist)
+
+  ## Set up a colourmap where green represents Psychologists and red represents Economists
+  agent_cols <- c(rgb(0, 1, 0), rgb(1, 0, 0))
+
+
+  # STEP 2: HAVE ACADEMICS CHECK THEIR NEIGHBOURS
+
+  ### Give these temporary variables high values just to satisfy the while condition
+  n_sad_econs <- nside^2
+  n_sad_psychs <- nside^2
+
+  while( min( c(n_sad_econs, n_sad_psychs) ) > nside ) {
+    ### Calculate number of Economists surrounding each agent
+    A <- circshift(world, c(1, 0))     # Shift one row down and wrap round
+    B <- circshift(world, c(-1, 0))    # Shift one row up and wrap round
+    C <- circshift(world, c(0, 1))     # Shift one col right and wrap round
+    D <- circshift(world, c(0, -1))    # Shift one col left and wrap round
+    n_econ <- A + B + C + D            # Now matrix `n_econ` has the number of Economists neighbours for each person in world
+
+
+  # STEP 3: IDENTIFY SAD ECONOMISTS AND PSCYHOLOGISTS (still in the while loop)
+
+    ## CHANGES MADE SO ECONOMISTS/PSYCHOLOGISTS CAN TOLERATE TWO DIFFERENT NEIGHBOURS
+    ### Find sad Economists (i.e. < `econ_econ` Economists as neighbours ~ > (4 - `econ_econ`) Psychologists as neighbours)
+    sad_econs <- world * (n_econ < econ_econ) * 1
+
+    ### Find sad Psychologists (i.e. > `psych_econ` Economists as neighbours)
+    sad_psychs <- abs(world - 1) * (n_econ > psych_econ) * 1
+
+    ### Count the number of sad Psychologists and Economists
+    n_sad_econs <- sum(sad_econs)
+    n_sad_psychs <- sum(sad_psychs)
+
+
+  # STEP 4: SWAP SAD ACADEMICS (still in the while loop)
+
+    ### Choose a random sad Economist and change to be a Psychologist
+    w <- which(sad_econs > 0, arr.ind = TRUE)         # Get the row and col indices (arr.ind = TRUE) of all sad Economists (sad_econs > 0)
+    index <- ceiling(runif(1, 0, 1) * n_sad_econs)    # Choose a random sad Economist
+    world[w[index, 1], w[index, 2]] <- 0              # Change the Economist to a Psychologist
+
+    ### Choose a random sad Psychologist and change to be an Economist
+    w <- which(sad_psychs > 0, arr.ind = TRUE)        # Get the row and col indices of all sad Psychologists
+    index <- ceiling(runif(1, 0, 1) * n_sad_psychs)   # Choose a random sad Economist
+    world[w[index, 1], w[index, 2]] <- 1              # Change the Economist to a Psychologist
+
+  # STEP 5: DRAW THE STATE OF THE WORLD
+    
+    image(world, col = agent_cols)
+    Sys.sleep(0.2)      # Update the figure each time it goes round
+
+  }
+}
+```
+
+```{r Functions, eval=FALSE, echo=TRUE}
+### APPLYING BOTH FUNCTIONS ###
+
+schelling_basic(50)
+
+schelling_final_model(50, 0.5, 3, 1)
+```
+
+\newpage
+
+1.  **What happens (and why) if:**
+
+    1.  **Economists, psychologists, or both can tolerate two different neighbours?**
+
+        ```{r Code_Tolerance, eval=FALSE, echo=TRUE}
+        ### CODE CHANGES MADE SO ECONOMISTS/PSYCHOLOGISTS CAN TOLERATE TWO DIFFERENT NEIGHBOURS ###
+
+        # Find sad Economists (i.e. < `econ_econ` Economists as neighbours ~ > (4 - `econ_econ`) Psychologists as neighbours)
+        sad_econs <- world * (n_econ < econ_econ) * 1
+
+        # Find sad Psychologists (i.e. > `psych_econ` Economists as neighbours)
+        sad_psychs <- abs(world - 1) * (n_econ > psych_econ) * 1
+
+        # Count the number of sad Psychologists and Economists
+        n_sad_econs <- sum(sad_econs)
+        n_sad_psychs <- sum(sad_psychs)
+        ```
+
+        ```{r Better_Tolerance, eval=FALSE, echo=TRUE}
+        ### ECONOMISTS CAN TOLERATE TWO DIFFERENT NEIGHBOURS ### 
+        # Sad Economists: < 2 Economists as neighbours so > 2 Psychologists as neighbours
+        # Sad Psychologists: > 1 Economists as neighbours (criteria remains unchanged)
+        schelling_final_model(50, 0.5, 2, 1)
+
+
+        ### PSYCHOLOGISTS CAN TOLERATE TWO DIFFERENT NEIGHBOURS ### 
+        # Sad Economists: < 3 Economists as neighbours so > 1 Psychologists as neighbours (criteria remains unchanged)
+        # Sad Psychologists: > 2 Economists as neighbours
+        schelling_final_model(50, 0.5, 3, 2)
+
+
+        ### ECONOMISTS AND PSYCHOLOGISTS CAN TOLERATE TWO DIFFERENT NEIGHBOURS ### 
+        # Sad Economists: < 2 Economists as neighbours so > 2 Psychologists as neighbours
+        # Sad Psychologists: > 2 Economists as neighbours
+        schelling_final_model(50, 0.5, 2, 2)
+        ```
+
+        \newpage
+
+    2.  **There are initially more psychologists than economists**
+
+        ```{r Code_More_Psych, eval=FALSE, echo=TRUE}
+        ### CODE CHANGES MADE SO THERE ARE MORE PSYCHOLOGISTS THAN ECONOMISTS ###
+
+        ## Assign agents to be either Psychologists (0) or Economists (1)
+        world <- (rand_world > psych_n) * 1
+        ## If agent in rand_world is more than `psych_n` it is assigned TRUE otherwise it is assigned FALSE. The boolean is then multiplied by 1 to return a numeric value 1 (TRUE = Economist) or 0 (FALSE = Psychologist)
+        ```
+
+        ```{r More_Psych, eval=FALSE, echo=TRUE}
+        ### MORE PSYCHOLOGISTS ###
+        schelling_final_model(50, 0.75, 3, 1)
+        ```
+
+    3.  **Look at larger neighbourhoods (harder)**
+
+        ```{r Code_Larger_Neighbourhood, eval=FALSE, echo=TRUE}
+        ### CODE CHANGES MADE FOR LARGER NEIGHBOURHOODS ###
+
+        nside <- nside_inp     ## Number of agents on each side of the matrix
+        ```
+
+        ```{r Larger_Neighbourhood, eval=FALSE, echo=TRUE}
+        ### LARGER NEIGHBOURHOODS ###
+
+        schelling_final_model(75, 0.5, 3, 1)
+        ```

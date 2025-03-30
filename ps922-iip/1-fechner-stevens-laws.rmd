@@ -1,0 +1,372 @@
+---
+title: "Part 1: Fechner's & Stevens' Laws"
+output: pdf_document
+
+header-includes:
+  \usepackage{fvextra}
+  \DefineVerbatimEnvironment{Highlighting}{Verbatim}{breaklines,commandchars=\\\{\}}
+---
+
+```{r Library}
+library(tidyverse)
+```
+
+# Part 1
+
+## Part 1.2 Draw some illustrative graphs
+
+| **For stimulus intensities ranging between 1 and 100, plot a graph illustrating the different predictions of Fechner’s Law and Stevens’ Law, using parameter (j, k and a) values that enable the comparison to be clear**
+
+$\text{Fechner's Law: } S = k \times \log{j}$
+
+-   `S` = Subjective magnitude (i.e., stimulus perceived strength)
+
+-   `k` = Parameter (i.e., constant that depends on what sense is being measured)
+
+-   `j` = Stimulus intensity (i.e., objective stimulus strength)
+
+$\text{Stevens' Law: }S = k \times j^{a}$
+
+-   `S` = Subjective magnitude (i.e., stimulus perceived strength)
+
+-   `k` and `a` = Parameters (i.e., constants)
+
+-   `j` = Stimulus intensity (i.e., objective stimulus strength)
+
+\newpage
+
+```{r Fechner_Stevens}
+### FUNCTION CALCULATING SUBJECTIVE MAGNITUDE ACCORDING TO FECHNER'S AND STEVENS' LAWS ###
+
+fechner_stevens <- function(j_intensity, k, a) {
+  
+  # ESTABLISH EMPTY VECTORS
+  fechner <- c()
+  stevens <- c()
+  
+  
+  for (j in j_intensity) {
+    # CALCULATE SUBJECTIVE MAGNITUDE FOR EACH LAW
+    fechner_values <- k * log(j)
+    stevens_values <- k * j^(a)
+    
+    # APPEND RESULTS TO RESPECTIVE VECTOR
+    fechner <- c(fechner, fechner_values)
+    stevens <- c(stevens, stevens_values)
+  }
+  
+  
+  # CREATE TIBBLE OF SUBJECTIVE MAGNITUDES OF EACH LAW
+  subjective_magnitudes <- tibble("stimulus_intensity" = j_intensity,
+                                  "Fechner's law" = fechner,
+                                  "Stevens' law" = stevens)
+  
+  subjective_mag <- subjective_magnitudes %>% 
+    ## Pivot longer to make a tidy tibble
+    pivot_longer(c("Fechner's law", "Stevens' law"), 
+                 names_to = "Law", 
+                 values_to = "subjective_magnitudes") %>% 
+    ## Establish each `a` parameter as a unique factor
+    mutate(Law = factor(Law, levels = unique(Law)))
+  
+  
+  # PLOT GRAPH 
+  plot <- ggplot(data = subjective_mag, 
+         aes(x = stimulus_intensity, y = subjective_magnitudes, col = Law)) +
+    geom_point() +
+    geom_line() +
+    
+    ## Rename axes
+    labs(title = "Fechner's vs Stevens' Laws",
+         subtitle = paste0("When k = ", k, " and a = ", a),
+         x = "Stimulus Intensity (j)",
+         y = "Subjective Magnitudes (S)") +
+    
+    ## Set theme
+    theme_bw()
+  
+  return(list(table = subjective_mag, graph = plot))
+  
+}
+```
+
+\newpage
+
+```{r Comparison_k}
+### VARYING VALUES OF PARAMETER k ###
+
+k_values <- c(seq(0, 10, 5))
+
+for (k in k_values) {
+
+  fs <- fechner_stevens(j_intensity = c(1:100), k = k, a = 0.5)
+  print(fs)
+  print("--------------------------------------------------------------")
+  print("--------------------------------------------------------------")
+  print("--------------------------------------------------------------")
+
+}
+```
+
+\newpage
+
+```{r Stevens_a_Function}
+### FUNCTION APPLYING STEVENS' LAW TO DIFFERENT a PARAMETERS ###
+
+stevens_a <- function(j_intensity, k, a_parameter, table = FALSE, graph = FALSE) {
+  
+  # ESTABLISH VARIABLES FOR LENGTHS OF a_parameter AND j_intensity
+  a_n <- length(a_parameter)
+  j_n <- length(j_intensity)
+  
+  
+  # ESTABLISH EMPTY VECTOR
+  stevens <- c()
+  
+  
+  # LOOPING THROUGH EVERY a PARAMETER 
+  for (a in a_parameter) {
+      
+    # LOOPING THROUGH EVERY STIMULUS INTENSITY VALUE (j)
+    for (j in j_intensity) {
+      
+      # CALCULATE SUBJECTIVE MAGNITUDE FOR STEVENS' LAW
+      stevens_values <- k * j^(a)
+      
+      # APPEND SUBJECTIVE MAGNITUDES TO EMPTY VECTOR
+      stevens <- c(stevens, stevens_values)
+  
+    }
+  }
+  
+  # CREATE TIBBLE OF SUBJECTIVE MAGNITUDES FOR EACH a PARAMETER
+  a_tibble <- tibble("a" = rep(a_parameter, each = j_n),
+                     "k" = rep(k),
+                     "stimulus_intensity" = rep(j_intensity, times = a_n),
+                     "stevens_pred" = stevens)
+  
+  ## Establish each `a` parameter as a unique factor
+  a_tibble <- a_tibble %>% 
+    mutate(a = factor(a, levels = unique(a)))
+  
+  
+  # PRINT TABLE & GRAPH IF BOTH ARE CALLED
+  if (table && graph == TRUE) {
+    plot <- ggplot(data = a_tibble,
+                   aes(x = stimulus_intensity, y = stevens_pred, colour = a)) +
+    geom_line() +
+    
+    ## Naming titles and axes
+    labs(title = "Stevens' Law Applied to Different a Parameters",
+         subtitle = paste0("When j = ", min(j_intensity), ":", max(j_intensity), " and k = ", k),
+         x = "Stimulus intensity (j)" ,
+         y = "Subjective Magnitudes (S)" ,
+         colour = "a") +
+    
+    ## Set theme
+    theme_bw()
+    
+    return(list(table = a_tibble, graph = plot))
+  }
+  
+  
+  # PRINT TABLE IF CALLED
+  else if (table) {
+    return(a_tibble)
+  }
+  
+  
+  # PRINT GRAPH IF CALLED
+  else if (graph) {
+    plot <- ggplot(data = a_tibble,
+         aes(x = stimulus_intensity, y = stevens_pred, colour = a)) +
+    geom_line() +
+    
+    ## Naming titles and axes
+    labs(title = "Stevens' Law Applied to Different a Parameters",
+         subtitle = paste0("When j = ", min(j_intensity), ":", max(j_intensity), " and k = ", k),
+         x = "Stimulus intensity (j)" ,
+         y = "Subjective Magnitudes (S)" ,
+         colour = "a") +
+    
+    ## Set theme
+    theme_bw()
+    
+    return(plot)
+  }
+  
+}
+```
+
+\newpage
+
+```{r Comparison_a}
+# stevens_a(1:20, 1, 0.67, table = TRUE, graph = TRUE)
+
+### VARYING VALUES OF PARAMETER a ###
+
+a_values <- c(seq(0, 1, 0.25), 2)
+
+for (a in a_values) {
+
+  fs <- stevens_a(j_intensity = c(1:100), k = 5, a = a, graph = TRUE)
+  print(fs)
+  print("--------------------------------------------------------------")
+  print("--------------------------------------------------------------")
+  print("--------------------------------------------------------------")
+
+}
+```
+
+\newpage
+
+```{r a_exponents}
+### APPLYING STEVENS' LAW TO DIFFERENT STIMULI TYPES ###
+
+
+# ESTABLISH VARIABLES
+## Stimuli intensity
+j_int_data <- c(1:50)
+j_int_n <- length(j_int_data)
+
+## Parameter k
+brightness_k <- 10
+loudness_k <- 10
+heaviness_k <- 0.1
+electric_k <- 0.0001
+
+
+# CALCULATES STEVENS' LAW FOR EACH STIMULI
+Brightness <- stevens_a(j_int_data, brightness_k, 0.5, table = TRUE)
+Loudness <- stevens_a(j_int_data, loudness_k, 0.67, table = TRUE)
+Heaviness <- stevens_a(j_int_data, heaviness_k, 1.45 , table = TRUE)
+Electric <- stevens_a(j_int_data, electric_k, 3.5 , table = TRUE)
+
+
+# CREATE TABLE INCLUDING STIMULI NAMES
+## Important for legend names
+stimuli_name <- c(paste0("Brightness (a = 0.5, k = ", brightness_k, ")"), 
+                  paste0("Loudness (a = 0.67, k = ", loudness_k, ")"), 
+                  paste0("Heaviness (a = 1.45, k = ", heaviness_k, ")"), 
+                  paste0("Electric Shock (a = 3.5, k = ", electric_k, ")"))
+
+new_stimuli <- rbind(Brightness, Loudness, Heaviness, Electric)
+
+new_stimuli <- new_stimuli %>% 
+  as_tibble() %>% 
+  mutate(stimuli = rep(stimuli_name, each = j_int_n)) %>% 
+  relocate(stimuli, .before = a) %>% 
+  mutate(stimuli = factor(stimuli, levels = unique(stimuli)))
+
+new_stimuli
+
+
+# CREATE PLOT
+ggplot(data = new_stimuli,
+       aes(x = stimulus_intensity, y = stevens_pred, colour = stimuli)) +
+    geom_line() +
+
+    ## Naming titles and axes
+    labs(title = "Stevens' Law Applied to Different Stimuli",
+         subtitle = paste0("When j = ",
+                           min(new_stimuli$stimulus_intensity), ":", 
+                           max(new_stimuli$stimulus_intensity)),
+         x = "Stimulus intensity (j)" ,
+         y = "Subjective Magnitudes (S)" ,
+         colour = "Stimuli") +
+
+    ## Set theme
+    theme_bw()
+```
+
+\newpage
+
+## Part 1.3 Comparing model and data
+
+Imagine you present six stimuli (e.g., tones varying in loudness) to participants, multiple times, and ask them to rate on a 1-7 scale how loud they are.
+
+1.  **Calculate the RMSD (root mean square deviation) between model (Stevens’ Law) and judgements for various parameter values**
+
+    -   Explore the *model’s predictions* for the judgements of subjective intensities of these sensory magnitudes: `stimuli = [2, 4, 6, 8, 10, 12]`
+
+    ```{r RMSD_Function}
+    ### FUNCTION CALCULATING RMSD USING TABLE OUTPUT FROM stevens_a FUNCTION ###
+
+    rmsd_calc <- function(stevens_func_table, actual_judgements) {
+      
+      # MODEL PREDICTIONS
+      model_pred <- stevens_func_table
+
+      a_n <- model_pred$a %>%
+        unique() %>% 
+        length() 
+      
+      
+      # ACTUAL JUDGEMENT
+      model_actual <- model_pred %>% 
+        mutate(actual_judgements = rep(actual_judgements, times = a_n)) %>% 
+        relocate(k, .before = a)
+
+      
+      # CALCULATE SD
+      sd_table <- model_actual %>% 
+        mutate(sd = (stevens_pred - actual_judgements) ^ 2,
+               a = factor(a, levels = unique(a)),
+               k = factor(k, levels = unique(k))
+               ) 
+      
+      ## Identify k (for title)
+      k <- unique(sd_table$k)
+      
+      
+      # CALCULATE RMSD
+      rmsd_table <- sd_table %>%
+        group_by(a) %>%
+        mutate(rmsd = sqrt(mean(sd)))
+      
+      ## Print table (for checking purposes)
+      print(rmsd_table)
+      
+      ## Select columns (for graph)
+      rmsd_graph <- rmsd_table %>% 
+        select(1:2, 7) %>%
+        group_by(a) %>%
+        summarise(RMSD = round(mean(rmsd), 2))
+      
+      y_max <- max(rmsd_graph$RMSD)
+      
+      # PLOT GRAPH
+      ggplot(data = rmsd_graph,
+             aes(x = a, y = RMSD)) +
+        geom_bar(stat = "identity") +
+        geom_text(aes(label = RMSD), vjust = -0.5, size = 3) +
+        labs(title = paste0("RMSD as `a` changes when k = ", k)) +
+        theme_bw()
+    }
+    ```
+
+    \newpage
+
+    2.  **Find the approximate parameter values that minimise RMSD**
+        -   An experiment was conducted to find the actual subjective intensities in human participants: `judgements = [1.1, 1.5, 2.1, 2.5, 2.9, 3.2]`
+        -   **What values of a and k will minimise RMSD?**
+
+    ```{r RMSD}
+    ### CALCULATING RMSD ###
+
+    # DEFINING ARGUMENTS
+    j_data <- seq(2, 12, 2)
+    # a <- c(0.5, 0.67, 1.45, 3.5)
+    a <- c(seq(0, 5, 0.5))
+    actual_judgements <- c(1.1, 1.5, 2.1, 2.5, 2.9, 3.2)
+
+
+    # VARIABLES OF OUTPUT FROM stevens_a FUNCTION
+    pred_k1 <- stevens_a(j_data, 1, a, table = TRUE, graph = TRUE)
+    pred_k10 <- stevens_a(j_data, 10, a, table = TRUE, graph = TRUE)
+
+
+    # CALLING rmsd_calc 
+    rmsd_calc(pred_k1$table, actual_judgements)
+    rmsd_calc(pred_k10$table, actual_judgements)
+    ```

@@ -1,0 +1,211 @@
+---
+title: "Part 2: Range Frequency Theory (RFT)"
+output: pdf_document
+
+header-includes:
+  \usepackage{fvextra}
+  \DefineVerbatimEnvironment{Highlighting}{Verbatim}{breaklines,commandchars=\\\{\}}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r Library}
+library(tidyverse)
+library(scales)
+```
+
+# Task 2 Data to Model
+
+Each of the four lists of 11 numbers over gives a set of hypothetical prices for a product
+
+For each of the four distributions separately:
+
+1.  Determine the predicted judged “expensiveness” of each price according to RFT (with parameter `w` set to 0.5)
+    -   Predicted judgements should be on a scale between 1 and 7
+2.  Plot graphs to illustrate the predictions
+3.  Explore and briefly describe the effects of varying `w`
+
+## Modelling Strategy
+
+```{r Models}
+# ASSIGNING PRICES TO A MODEL VECTOR
+unimodel <- c(28, 42, 46, 49, 52, 55, 58, 61, 64, 68, 82)
+bimodel <- c(28, 31, 34, 38, 42, 55, 68, 72, 76, 79, 82)
+positive_skew <- c(28, 29, 31, 33, 36, 39, 43, 48, 55, 65, 82)
+negative_skew <- c(28, 45, 55, 62, 67, 71, 74, 77, 79, 81, 82)
+
+
+# LIST OF ALL MODELS AND THEIR RESPECTIVE PRICES
+models <- list(unimodel = unimodel,
+               bimodel = bimodel,
+               positive_skew = positive_skew,
+               negative_skew = negative_skew)
+
+
+# VECTOR OF ALL THE PRICES
+full_model <- c(unimodel, bimodel, positive_skew, negative_skew)
+```
+
+1.  **Calculate “range” values for each price (make vector)**
+
+    Rank = $\frac{s - min(model)}{max(model) - min(model)}$
+
+2.  **Calculate “frequency” values for each price (make vector)**
+
+    Frequency = $\frac{rank - 1} {n - 1}$
+
+3.  **Calculate RFT prediction for each price (make vector)**
+
+    Magnitude = $(w \times rank) + ((1 - w) \times frequency)$
+
+4.  **The RFT values will vary between 0 and 1. These need to be transformed into predicted ratings between 1 and 7**
+
+5.  **Draw the graphs**
+
+6.  **Examine effect of varying the `w` parameter**
+
+```{r Function}
+### CALCULATE RFT PREDICTIONS ###
+
+RFT_Predicted_Graph <- function(w, models_list, full_model) {
+
+  # RFT - SUBJECTIVE MAGNITUDE (OR SUBJECTIVE JUDGEMENT)
+  ## Vectors to store answers for each equation
+  rank <- c()
+  frequency <- c()
+  magnitude <- c()
+  
+  for (name in names(models)) {
+    model <- models[[name]]           ## Establish model of focus by name
+  
+    for (i in seq_along(model)) {
+      s <- model[i]                   ## Element indexed i
+      n <- length(model)              ## Length of model 
+  
+      model_max <- max(model)         ## Max value of model 
+      model_min <- min(model)         ## Min value of model 
+  
+      ## Calculate rank
+      rank_value <- (s - model_min) / (model_max - model_min)
+      rank <- c(rank, rank_value)
+      
+      ## Calculate frequency
+      frequency_value <- (rank_value - 1) / (n - 1)             
+      frequency <- c(frequency, frequency_value)
+      
+      ## Calculate magnitude
+      magnitude_value <- (w * rank_value) + ((1 - w) * frequency_value)   
+      magnitude <- c(magnitude, magnitude_value)
+  
+    }
+  }
+  
+  m_n <- length(model)          ## Length of model
+  m_names <- names(models)      ## Names of each model
+  
+  
+  # CREATE A TIBBLE WITH VARIABLES
+  model_rfm <- tibble(index = rep(1:11, times = 4),
+                      prices = full_model,
+                      model = rep(m_names, each = m_n),
+                      rank = rank,
+                      frequency = frequency,
+                      magnitude = magnitude)
+
+  ## Ensure tibble only had key variables
+  model_magnitude <- model_rfm %>% 
+    select(1:3, 6)
+  
+  
+  # RESCALING SUBJECTIVE MAGNITUDES TO PREDICTED VALUES
+  predicted_ratings <- model_magnitude %>%
+    mutate(predicted_ratings = rescale(magnitude, to = c(1, 7))) %>% 
+    mutate(w = rep(w))
+
+  
+  # CALCULATING MEANS PER MODEL
+  pr_mean <- predicted_ratings %>% 
+    group_by(model) %>%
+    summarize(mean_pr = mean(predicted_ratings)) %>% 
+    mutate(w = rep(w))
+  
+  ## Upper bound for y-axis
+  max_pr_mean <- round(max(pr_mean$mean_pr), 0) + 1
+  
+  ## Upper & Lower bounds for subjective magnitudes
+  ### print(max(predicted_ratings$magnitude))
+  ### print(min(predicted_ratings$magnitude))
+  
+  
+  # GRAPHS
+  ## Predicted ratings 
+  pr_plot <- ggplot(predicted_ratings,
+                    aes(x = index, y = predicted_ratings, colour = model)) +
+    geom_point() +
+    geom_line() +
+    
+    scale_x_continuous(name = "Element index",
+                     breaks = seq(0, 11, 1)) +
+    scale_y_continuous(name = "Predicted Judgements",
+                     breaks = seq(0, 7, 0.5)) +
+    labs(title = paste("Models of Predicted Judgements when w =", w),
+         colour = "Models") +
+    
+    theme_bw() 
+  
+  ## Subjective Magnitude 
+  sm_plot <- ggplot(predicted_ratings,
+                    aes(x = index, y = magnitude, colour = model)) +
+    geom_point() +
+    geom_line() +
+    
+    scale_x_continuous(name = "Element index",
+                     breaks = seq(0, 11, 1)) +
+    scale_y_continuous(name = "Subjective Magnitude") +
+    
+    labs(title = paste("Models of Subjective Magnitude when w =", w),
+         colour = "Models") +
+    
+    theme_bw() 
+  
+  ## Means of predicted ratings per model
+  mean_plot <- ggplot(pr_mean, aes(x = model, y = mean_pr)) +
+    geom_bar(stat = "identity", fill = "grey") +
+    
+    geom_text(aes(label = round(mean_pr, 2)),
+              vjust = -0.3,
+              colour = "black") +
+    
+    labs(title = paste("Mean Predicted Judgements per Model when w =", w),
+         x = "Model",
+         y = "Mean Predicted Judgements") + 
+    
+    ylim(c(0, max_pr_mean)) +
+    
+    theme_bw()
+  
+  
+  return(list(predicted_ratings = predicted_ratings,
+              sm_plot = sm_plot, 
+              pr_plot = pr_plot, 
+              mean_plot = mean_plot))
+  
+}
+```
+
+```{r RFT_Predicted_Graph}
+### VARYING VALUES OF w IN RFT ###
+
+w_values <- c(seq(0, 1, 0.25))
+
+for (w in w_values) {
+  
+  RFT_pred <- RFT_Predicted_Graph(w, models, full_model)
+  print(RFT_pred)
+  print("--------------------------------------------------------------")
+  print("--------------------------------------------------------------")
+  print("--------------------------------------------------------------")
+}
+```
