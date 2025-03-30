@@ -1,0 +1,633 @@
+---
+title: "a2_5637058"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r libraries, message=FALSE}
+library(tidyverse)
+library(afex)
+library(emmeans)
+library(plotrix)
+```
+
+# Task 1 Personalised References
+
+When applying for a job, it’s obviously highly desirable to have a relevant CV and good references. This task relates to whether, and the extent to which, the quality or style of references may influence decisions.
+
+The file `candidate.csv` provides simulated (i.e., fictitious) data for how potential employers (identified by `uID` number) perceived various job candidates (rated on a scale of 0 to 100; 0 denoting definitely wouldn’t interview, 100 being definitely would interview). Each `rating` was given after reading the candidate’s CV and a reference letter for the candidate.
+
+The experiment used two types of candidates; each was either applying for a `managerial` role (where the employer would be likely to interact regularly with the candidate in-person if they subsequently got the job) or a `technical` role (where they would be less likely to meet on a day-to-day basis).
+
+The reference of each candidate had a `bias`: each was manipulated to either be slightly `positive` or slightly `negative`. Half the references were `personalised` (these included a small photo of the reviewer’s face in a corner of the page, and a ‘flashy’ signature in coloured ink) whilst the other half were `nonpersonal` (no photo, and just the printed name of the referee).
+
+Note that each employer only saw one reference (positive or negative) for any particular candidate, and each employer saw an equal number of positively and negatively biased reviews across the different items.
+
+Given that references supply information, **the general expectation is that the positively biased references will tend to produce higher ratings than the negatively biased references, but is this effect similar for both personalised and non-personalised references (and for different role types)?** Some might expect that the impact of the reference bias would be greater for personalised references than the nonpersonal.
+
+**The focal hypothesis is that the effect of bias (on ratings) is stronger for personalised references than for nonpersonal references.** *The type of role (management or technical) mainly serves as a control variable but should also be considered.* Please analyse the data with a repeated-measures (within-subjects) ANOVA and report the results as you would in a journal paper.
+
+**If you were to run a similar study in future (i.e., with the same general aims, but with the potential for small changes in the design), is there anything particular that you would change, or specifically aim to control for?** Please comment on this at the end of your report.
+
+\newpage
+
+## Part 1: Results Description
+
+This study aims to understand whether the quality or style of references may influence hiring decisions (e.g., moving a candidate to the interview stage) made by employers. More specifically, this study investigates whether positively biased references contribute towards higher employer ratings than negatively biased ones when (a) references are personalised versus non-personalised and (b) for different job roles. This study’s key hypothesis is that Bias has a stronger effect on ratings with personalised than non-personalised references.
+
+A three-way repeated measures ANOVA was conducted to investigate the differences in group means across three manipulations of a candidate reference: Bias (positive, negative), Personalisation (personalised, non-personalised), and Role Type (managerial, technical). The results showed significant interactions effects between (a) Bias and Personalisation; *F*(1, 176) = 29.24, *p* \< .001 (b) Bias and Role Type; *F*(1, 176) = 18.40, *p* \< .001 (c) Personalisation and Role Type; *F*(1, 176) = 62.21, *p* \< .001 and (d) Bias, Personalisation and Role Type; *F*(1, 176) = 4.44, *p* = .037, on employers’ ratings of candidates.
+
+To address the key hypothesis on whether the effect of Bias on employers’ ratings is stronger for personalised versus non-personalised references, Boneferroni-Holm corrected post hoc tests were first conducted on the interaction between Bias and Personalisation. Bias had a significant effect on ratings when the reference was both personalised - *F*(1, 176) = 91.78, *p* \< .0001 and non-personalised - *F*(1, 176) = 12.12, *p* = .0006 - however, the effect was weaker for the latter than the former. However, biased personalised references were significantly less likely to receive higher ratings than biased non-personalised references ($\Delta = -3.38, t(176) = -2.087, p = 0.0384$). Therefore, these findings do not support the hypothesis that the effect of Bias on ratings is stronger when references are personalised.
+
+Positively personalised references (M = 73.7) were significantly more likely to get higher ratings than negatively personalised references (M = 59.1) ($\Delta = 14.63, p < .0001$). Positive non-personalised references (M = 71.9) were significantly more likely to get higher ratings than negative non-personalised references (M = 67.7) ($\Delta = 4.20, p = .0019$). These findings (visualised in Figure 1) align with the general expectation that employers are more likely to favourably rate a candidate if their reference is positively rather than negatively biased.
+
+![](images/clipboard-898978873.png)
+
+*Figure 1. Boxplots showing employer ratings of candidate references by Bias (positive in blue, negative in brown) and Personalisation (personalised on the left, non-personalised on the right). The cross within each boxplot indicates mean ratings for each experimental condition (e.g., the blue cross on the leftmost boxplot is the mean for the positive, personalised reference) with 95% error bars.*
+
+An additional Boneferroni-Holm corrected post hoc test was conducted to explore the three-way interaction between Bias and Personalisation and Role Type. Bias has a significant effect on employers’ ratings of candidates when references are (a) managerial and personalised; *F*(1, 176) = 25.56, *p* \< .0001 (b) technical and personalised; *F*(1, 176) = 98.90, *p* \< .0001 and (c) technical and non-personalised; *F*(1, 176) = 13.03, *p* = .0008 but not when references are managerial and non-personalised; *F*(1, 176) = 1.34, *p* = .25. This interaction effect can be viewed in Figure 2.
+
+![](images/clipboard-681948019.png)
+
+*Figure 2. Boxplots showing employer ratings of candidate references by Personalisation (personalised in blue, non-personalised in brown) and Bias (positive, negative) grouped by Role Type (management on the left, technical on the right). Similar to Figure 1, crosses within each boxplot indicate mean ratings for each experimental condition (e.g., the blue cross on the most left boxplot is the mean for the positive, personalised managerial reference) with 95% error bars.*
+
+Future studies could look to control potential gender bias. For example, the sample pool of participating employers and the candidates should not be predominantly one gender. The study could include a new gender manipulation within the candidate reference which can then be included as a control when engaging in the parametric testing as above. By controlling for gender, researchers can ensure that any observed effects are due to experimental manipulation, rather than gender-related factors. This control can improve validity by reducing the potential bias of results due to gender differences.
+
+\newpage
+
+## Part 2: R Code
+
+```{r cand_data}
+# Loading data
+cand_df <- read_csv("candidate.csv")
+
+# Structure of dataframe
+str(cand_df)
+
+# View parts of dataframe
+head(cand_df)
+
+# Unique levels within Reference variable
+cand_df %>% select(Reference) %>% unique()
+
+# Check for missing values
+cand_df %>% group_by(uID, Bias, Reference) %>% count()
+cand_df %>% group_by(uID, Bias, Reference) %>% count() %>% filter(n != 4)
+```
+
+```{r cand_factors}
+# Set factors for categorical variables 
+cand_df <- cand_df %>% 
+  mutate(
+    uID = factor(uID),
+    RoleType = factor(RoleType, levels = c("Management", "Technical")),
+    Bias = factor(Bias, levels = c("Positive", "Negative")),
+    Reference = factor(Reference, levels = c("Personalised", "NonPersonal"), labels = c("Personalised", "Not Personalised"))
+  )
+
+str(cand_df)
+head(cand_df)
+```
+
+```{r}
+# Count number of observations per participant 
+cand_df %>% 
+  group_by(uID) %>% 
+  count() %>% 
+  pull(n) %>%     # Extract values from a single column
+  unique()
+
+```
+
+```{r cand_descriptives}
+# Descriptive statistics
+
+x = 3
+
+
+## Overall 
+cand_df %>% 
+  summarise(total_mean = mean(Rating), total_sd = sd(Rating)) %>% 
+  mutate(
+    total_mean = signif(total_mean, 3),
+    total_sd = signif(total_sd, 3)
+  )
+
+
+## RoleType
+cand_df %>% 
+  group_by(RoleType) %>% 
+  summarise(mean = mean(Rating), 'standard deviation' = sd(Rating),
+            'standard error' = std.error(Rating)) %>% 
+  mutate(
+    mean = signif(mean, x),
+    `standard deviation` = signif(`standard deviation`, x),
+    `standard error` = signif(`standard error`, x)
+    )
+
+
+## Bias
+cand_df %>% 
+  group_by(Bias) %>% 
+  summarise(mean = mean(Rating), 'standard deviation' = sd(Rating),
+            'standard error' = std.error(Rating)) %>% 
+  mutate(
+    mean = signif(mean, x),
+    `standard deviation` = signif(`standard deviation`, x),
+    `standard error` = signif(`standard error`, x)
+    )
+
+
+## Reference
+cand_df %>% 
+  group_by(Reference) %>% 
+  summarise(mean = mean(Rating), 'standard deviation' = sd(Rating),
+            'standard error' = std.error(Rating)) %>% 
+  mutate(
+    mean = signif(mean, x),
+    `standard deviation` = signif(`standard deviation`, x),
+    `standard error` = signif(`standard error`, x)
+    )
+
+
+## Bias x Reference
+cand_df %>% 
+  group_by(Bias, Reference) %>% 
+  summarise(mean = mean(Rating), 'standard deviation' = sd(Rating),
+            'standard error' = std.error(Rating)) %>% 
+  mutate(
+    mean = signif(mean, x),
+    `standard deviation` = signif(`standard deviation`, x),
+    `standard error` = signif(`standard error`, x)
+    )
+
+
+## RoleType x Bias x Reference
+cand_df %>% 
+  group_by(RoleType, Bias, Reference) %>% 
+  summarise(mean = mean(Rating), 'standard deviation' = sd(Rating),
+            'standard error' = std.error(Rating)) %>% 
+  mutate(
+    mean = signif(mean, x),
+    `standard deviation` = signif(`standard deviation`, x),
+    `standard error` = signif(`standard error`, x)
+    )
+```
+
+```{r cand_anova}
+# Three-way repeated measures ANOVA 
+cand_anova <- aov_ez(id = 'uID', dv = "Rating", data = cand_df, 
+                     within = c("Bias", "Reference", "RoleType"))
+
+cand_anova
+```
+
+-   There is a significant interaction between Bias and Reference
+
+    -   *F*(1, 176) = 29.24, *p* \< .001
+
+-   There is a significant interaction between Bias and RoleType
+
+    -   *F*(1, 176) = 18.40, *p* \< .001
+
+-   There is a significant interaction between Reference and RoleType
+
+    -   *F*(1, 176) = 62.21, *p* \< .001
+
+-   There is a significant interaction between Bias, Reference and RoleType
+
+    -   *F*(1, 176) = 4.44, *p* = .037
+
+**the general expectation is that the positively biased references will tend to produce higher ratings than the negatively biased references, but is this effect similar for both personalised and non-personalised references (and for different role types)?**
+
+-   Effect of Bias on Personalisation
+
+```{r cand_posthoc}
+# Bias x Reference
+cand_df %>% 
+  group_by(Reference) %>% 
+  summarise(anova(aov_ez('uID', "Rating", across(), within = "Bias"))) %>% 
+  ungroup() %>% 
+  mutate(
+    p_adj = round_ps(p.adjust(`Pr(>F)`, method = "holm")),
+    
+    # Round all numeric columns to 3 decimal places (except for Pr(>F))
+    across(where(is.numeric),~ round(., 3))
+  )
+
+
+joint_tests(cand_anova, by = "Reference", model = "multivariate") %>% 
+  mutate(p_adj = round_ps(p.adjust(p.value, method = "holm")))
+```
+
+-   Bias has a significant effect on Ratings when Reference is personalised
+
+    -   *F*(1, 176) = 91.784, *p* \< .0001
+
+-   Bias has a significant effect on Ratings when Reference is not personalised (but the effect is weaker due to lower *F* statistic)
+
+    -   *F*(1, 176) = 12.119, *p* = .0006
+
+```{r cand_contrasts}
+# Conditional means
+cand_em1 <- emmeans(cand_anova, c('Reference', 'Bias'))
+
+cand_em1
+
+
+# Contrast list
+con_BvR <- list(
+  PosP_vs_NegP = c(1, 0, -1, 0),
+  PosNP_vs_NegNP = c(0, 1, 0, -1),
+  P_vs_NP = c(0.5, -0.5, 0.5, -0.5)
+)
+
+# Contrasts
+contrast(cand_em1, con_BvR)
+```
+
+-   Positive personalised references (M = 73.7) were significantly more likely to get higher ratings than Negative personalised references (M = 59.1) ($\Delta = 14.63, p < .0001$)
+-   Positive non-personalised references (M = 71.9) were significantly more likely to get higher ratings than Negative non-personalised references (M = 67.7) ($\Delta = 4.20, p = .0019$)
+-   Biased Personalised references were significantly less likely to receive higher ratings than biased Non-personalised references ($\Delta = -3.38, t(176) = -2.087, p = 0.0384$)
+
+```{r cand_posthoc2}
+# Bias x Reference x RoleType
+cand_df %>% 
+  group_by(Reference, RoleType) %>% 
+  summarise(anova(aov_ez('uID', "Rating", across(), within = c("Bias")))) %>% 
+  ungroup() %>% 
+  mutate(
+    p_adj = round_ps(p.adjust(`Pr(>F)`, method = "holm")),
+    
+    # Round all numeric columns to 3 decimal places (except for p_value)
+    across(where(is.numeric),~ round(., 3))
+  )
+```
+
+-   Bias has a significant effect on Ratings when Reference is personalised and RoleType is managerial
+
+    -   *F*(1, 176) = 25.564, *p* \< .0001
+
+-   Bias has a significant effect on Ratings when Reference is personalised and RoleType is technical
+
+    -   *F*(1, 176) = 98.903, *p* \< .0001
+
+-   Bias does not have a significant effect on Ratings when Reference is not personalised and RoleType is managerial
+
+    -   *F*(1, 176) = 1.336, *p* = .25
+
+-   Bias has a significant effect on Ratings when Reference is not personalised and RoleType is technical
+
+    -   *F*(1, 176) = 13.030, *p* = .0008
+
+```{r cand_fig2}
+afex_plot(cand_anova, x = "Bias", trace = "Reference", panel = "RoleType",
+          error = "within", dodge = 0.65,
+          mapping = c("color"),
+          data_geom = ggplot2::geom_boxplot,
+          data_alpha = 0.5,
+          data_arg = list(width = 0.4),
+          point_arg = list(size = 3, pch = 4),
+          factor_levels = list(Reference = c("Personalised", "Non-Personalised")),
+          legend_title = "Reference Type"
+          ) +
+  
+  scale_color_manual(
+    values = c("Personalised" = "darkblue", "Non-Personalised" = "brown"),
+    name = "Reference Type"
+    ) +
+  
+  theme_bw() +
+  theme(
+    legend.position = "bottom",
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank()
+    )
+```
+
+```{r cand_fig1}
+afex_plot(cand_anova, trace = "Bias", x = "Reference", error = "within",
+          mapping = c("color"),
+          data_geom = ggplot2::geom_boxplot,
+          data_alpha = 0.5,
+          data_arg = list(width = 0.4),
+          point_arg = list(size = 3, pch = 4),
+          factor_levels = list(Reference = c("Personalised", "Non-Personalised")),
+          legend_title = "Bias"
+          ) +
+
+  scale_color_manual(
+    values = c("Positive" = "darkblue", "Negative" = "brown"),
+    name = "Bias"
+    ) +
+  
+  theme_bw() +
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank()
+    ) 
+```
+
+```{r cand_plot}
+afex_plot(cand_anova, x = "Bias", trace = "Reference", error = "within",
+          mapping = c("color"),
+          data_geom = ggpol::geom_boxjitter,
+          data_alpha = 0.15,
+          data_arg = list(width = 0.4),
+          point_arg = list(size = 2, pch = 20),
+          factor_levels = list(Reference = c("Personalised", "Not Personalised")),
+          legend_title = "Reference Type"
+          ) +
+  
+  theme_bw() +
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank()
+    ) 
+```
+
+\newpage
+
+# Task 2 Short-cuts and Time Penalties
+
+Time is a precious commodity, so it is not surprising that many choices in life depend on perceptions of risk in relation to how much time something might take or save.
+
+This task provides simulated data (in file `speed_greed.csv`) on how individuals make choices when they are trying to achieve a goal in a minimal amount of time. The participants encounter choices in an online (single-player) game; they make several such choices before completing each level of the game. The options are sometimes useful shortcuts and sometimes impose time penalties. The decisions govern how much of a risk they take when choosing between shortcuts, or when avoiding time penalties. Prior to each decision, the participant learns whether they will face a shortcut option or a time-penalty (i.e., they know that they will gain or lose time on that decision, but not how much time).
+
+Having learned that there is an available shortcut, for instance, they will be given a choice between a high-variance choice (e.g., saving either 100 or 500 seconds, with equal probability), or a low-variance choice with the same average (e.g., saving either 200 or 400 seconds, again with equal probability). Thus, either option saves the same amount of time on average (300 seconds in this example) – but one option is known to have a higher variance (i.e., it is more ‘risky’). If, instead of a shortcut, they had been informed that they would receive a time penalty, then after making their choice for whether to go for the more or less risky option, they would then lose that amount of time (according to the same general scheme).
+
+Having familiarised themselves with the game (moving up, down, left, right, and how to select options when faced with choices), each participant was tasked with traversing 3 levels (`L1`, `L2`, `L3`). To motivate the participants, payment for their involvement was linked to the speed with which they completed the 3 levels (the faster, the better). In each level, 18 key decisions were recorded (of whether they took the high or low risk option); choices for a `high variance` outcome are denoted by `1`; choices for the `low variance` outcome are denoted by `0`.
+
+The file provides data for 80 participants; **the data is in a wide format (one line per participant)**, with the intent being to have recorded a 1 or 0 for each decision; however, **the recording system was not perfect; very occasionally it would not record a value for one of the choices**.
+
+Each participant was assigned to one `Experience` group: `shortcut`, `penalty`, or `mixed`, which governed experiences during level 2 of the game. In levels 1 and 3, some gamble options were for shortcuts, and some were for time penalties. The options presented to a participant in level 1 was repeated in level 3 (though in a different order, to help prevent participants noticing). **During level 2, the participant’s group determined whether they repeatedly faced shortcuts, time penalties or a mix of the two.** The order of trials in each group was randomized separately for each participant, so each individual saw the trials in an order that was uniquely created for them.
+
+Your task is to analyse the data with an ANOVA and address **the** **research question of whether a series of positive or negative experiences (i.e., shortcuts or penalties) has an effect on the probability of making a risky (i.e., high variance) choice.** In other words, are risk preferences stable or affected by recent experiences? Please report the results as you would in a journal paper.
+
+\newpage
+
+## Part 1: Results Description
+
+This study investigated whether risk preferences are stable or affected by recent experience. More specifically, for this experiment, exploring whether positive (e.g., receiving shortcuts) or negative (e.g., receiving penalties) experiences influence a participant’s score depicting the likelihood of making a risky choice (e.g., choosing the high variance outcome).
+
+The original dataset consisted of 80 participants; however, after initial data exploration, two participants had missing data and were subsequently removed. The final working dataset included 4212 pieces of data (18 decisions per Level for three levels) from 78 participants.
+
+A mixed ANOVA was conducted with Experience (i.e., shortcuts, penalties, mixed) as the between-subjects variable and Levels (i.e., L1, L2, L3) as the within-subjects variable. A significant interaction effect was found between Experience and Levels; *F*(3.41, 128) = 9.89, *p* \< .001. Therefore, Boneferroni-Holm corrected post hoc tests were conducted on this interaction; Level was found to have a significant effect on scores when the Experience was (a) shortcut; *F*(1.30, 29.8) = 5.32, *p* = .04 and (b) penalty; *F*(1.61, 41.9) = 15.40, *p* \< .0001, where the effect was stronger in the latter. However, Level did not significantly affect Scores when the Experience was mixed; *F*(1.88, 48.8) = 1.49, *p* = .24.
+
+Further contrasts were conducted to specifically compare shortcuts (i.e., positive) or penalties (i.e., negative) experiences in making a risky choice (i.e., choosing the high variance outcome). The first contrasts compare shortcuts and penalties, finding the probability of participants making a risky choice was significantly lower with shortcuts compared to penalties; $\Delta = - 0.16 \text{, } t(75) = -2.48 \text{, } p = 0.031$. Therefore, these findings suggest that positive experiences lowered the likelihood of participants engaging in risky choices (shown in Figure 1).
+
+![](images/clipboard-3569039668.png)
+
+*Figure 1. Scatterplot showing the average probability of engaging in a high-risk choice for each Level and grouped by Experience (shortcut on the left, penalty in the middle, mixed on the right). The average probability is denoted by a shape (circle for Level 1, triangle for Level 2 and square for Level 3). The 95% CI error bars depicted here represent within-factor variability (e.g., variability for Level within Experience groups). The light grey crosses in the background represent the average score per participant.*
+
+The remaining contrasts compared penalties versus shortcuts within each Level. In Level 1, this contrast was not significant; $\Delta = 0.0021 \text{, } t(75) = 0.065 \text{, } p = 0.948$. In Level 2, the probability of participants making a risky choice was significantly lower with shortcuts than penalties. $\Delta = - 0.13 \text{, } t(75) = -3.71 \text{, } p = 0.016$. In Level 3, the probability of participants making a risky choice was significantly lower with shortcuts than penalties $\Delta = - 0.11 \text{, } t(75) = -2.96 \text{, } p = 0.012$. Therefore, a series of positive experiences (or shortcuts) significantly reduces the likelihood of making a risky choice. These findings show that the probability of risky choices varies after Level 1, remaining relatively stable across Levels 2 and 3 (visualised in Figure 2), suggesting that regardless of recent experiences, risk preferences tend to be more stable.
+
+![](images/clipboard-274594664.png)
+
+*Figure 2. Scatterplot showing the average probability of engaging in a high-risk choice for each Experience and grouped by Level (Level 1 on the left, Level 2 in the middle, Level 3 on the right). The average probability is denoted by a shape (circle for shortcut, triangle for penalty and square for mixed). The 95% CI error bars depicted here represent within-factor variability (e.g., variability for Experience within each Level). The light grey crosses in the background represent the average score per participant.*
+
+\newpage
+
+## Part 2: R Code
+
+```{r speed_data}
+# Loading data
+speed_df <- read_csv("speed_greed.csv")
+
+# Structure of dataframe
+str(speed_df)
+
+# View parts of dataframe
+head(speed_df)
+```
+
+```{r speed_na}
+# Identify columns with missing values 
+speed_nac <- speed_df %>% 
+  select(-c("ParticipantID", "Experience")) %>% 
+  is.na() %>%
+  colSums()
+
+speed_nac[speed_nac == 1]   # Printed value
+
+# Identify rows with missing values
+speed_nar <- speed_df %>% 
+  select(ParticipantID, L1_5, L1_16, L2_7)
+
+## Returns a boolean value identifying whether rows have missing values
+speed_missing <- !complete.cases(speed_nar)  
+
+## Extract IDs with missing data as a vector 
+speed_id_na <- speed_nar[speed_missing , ] %>% 
+  pull(ParticipantID)
+
+speed_id_na   # Printed value
+
+# Remove rows with missing values
+speed_dfn <- subset(speed_df, !(ParticipantID %in% speed_id_na))
+
+# Compare original with new df
+dim(speed_df)   # Printed value
+dim(speed_dfn)  # Printed value
+
+speed_df %>% filter(ParticipantID %in% speed_id_na)
+speed_dfn %>% filter(ParticipantID %in% speed_id_na)
+```
+
+-   Two participants were removed for having incomplete results
+
+```{r speed_pivot}
+# Collect column names
+speed_colnames <- speed_dfn %>% 
+  select(-c("ParticipantID", "Experience")) %>% 
+  colnames()
+
+# Pivot longer
+speed_dfn <- speed_dfn %>% 
+  pivot_longer(
+    cols = speed_colnames,
+    names_to = "Condition",
+    values_to = "Scores"
+  )
+
+# Check there are no missing conditions
+speed_dfn %>% 
+  group_by(ParticipantID) %>% 
+  count() %>% 
+  filter(n != 54)
+
+# Separate `Condition` variable into two separate variables
+speed_dfn <- speed_dfn %>% 
+  separate(col = Condition, into = c('Level', 'Experiment (L2)'), sep = '_')
+
+# View new df
+speed_dfn %>% head()
+```
+
+```{r speed_factors}
+# Establishing factors
+
+speed_dfn <- speed_dfn %>% 
+  mutate(
+    ParticipantID = factor(ParticipantID),
+    Experience = factor(Experience, levels = c("shortcut", "penalty", "mixed"),
+                        labels = c("Shortcut", "Penalty", "Mixed")),
+    Level = factor(Level, levels = c("L1", "L2", "L3")),
+    `Experiment (L2)` = factor(`Experiment (L2)`)
+    )
+
+speed_dfn %>% str()
+speed_dfn %>% head()
+```
+
+```{r speed_anova}
+# Mixed ANOVA
+
+speed_anova <- aov_ez(id = 'ParticipantID', dv = 'Scores', data = speed_dfn,
+                      between = 'Experience', within = 'Level')
+
+speed_anova
+```
+
+-   The interaction between Experience and Level is significant
+
+    -   *F*(3.41, 128) = 9.89, *p* \< .001
+
+```{r speed_posthoc}
+
+speed_dfn %>% 
+  group_by(Experience) %>% 
+  summarise(anova(aov_ez(id = 'ParticipantID', dv = 'Scores', data = across(),
+                   within = 'Level'))) %>% 
+  ungroup() %>% 
+  mutate(
+    p_adj = round_ps(p.adjust(`Pr(>F)`, method = 'holm')),
+    
+    # Round all numeric columns to 3 decimal places (except for p_adj)
+    across(where(is.numeric), ~ signif(., 3))
+    )
+```
+
+-   Level has a significant effect on Scores when the Experience is shortcut
+
+    -   *F*(1.30, 29.8) = 5.32, *p* = .04
+
+-   Level has a significant effect on Scores when the Experience is penalty
+
+    -   *F*(1.61, 41.9) = 15.40, *p* \< .0001
+
+-   Level does not have a significant effect on Scores when the Experience is mixed
+
+    -   *F*(1.88, 48.8) = 1.49, *p* = .24
+
+```{r speed_posthoc2}
+speed_em <- emmeans(speed_anova, c('Experience', 'Level'))
+
+speed_em
+
+# Contrasts 
+con_SvP <- list(
+  ## Main effect of Experience (shortcut = +, penalties = -)
+  S_P = c(1/3, -1/3, 0, 1/3, -1/3, 0, 1/3, -1/3, 0),
+  
+  ## Conditioning between Levels 
+  S_P_L1 = c(1/2, -1/2, 0, 0, 0, 0, 0, 0, 0),
+  S_P_L2 = c(0, 0, 0, 1/2, -1/2, 0, 0, 0, 0),
+  S_P_L3 = c(0, 0, 0, 0, 0, 0, 1/2, -1/2, 0)
+)
+
+contrast(speed_em, con_SvP, adjust = 'holm')
+```
+
+-   ***Research question: Whether a series of positive or negative experiences (i.e., shortcuts or penalties) has an effect on the probability of making a risky (i.e., high variance) choice.***
+
+    -   Probability of participants making a risky choice was significantly lower with Shortcuts compared to Penalties
+
+        -   $\Delta = - 0.16 \text{, } t(75) = -2.48 \text{, } p = 0.031$
+
+    -   Compared Penalties versus Shortcuts within each Level
+
+        -   In Level 1, this contrast was not significant
+
+            -   $\Delta = 0.0021 \text{, } t(75) = 0.065 \text{, } p = 0.948$
+
+        -   In Level 2, probability of participants making a risky choice was significantly lower with Shortcuts compared to Penalties
+
+            -   $\Delta = - 0.13 \text{, } t(75) = -3.71 \text{, } p = 0.016$
+
+        -   In Level 3, probability of participants making a risky choice was significantly lower with Shortcuts compared to Penalties
+
+            -   $\Delta = - 0.11 \text{, } t(75) = -2.96 \text{, } p = 0.012$
+
+```{r speed_plot1}
+afex_plot(speed_anova, x = 'Experience', trace = 'Level',
+          mapping = c('colour', 'shape'),
+          data_alpha = 0.35,
+          data_arg = list(size = 1.5, pch = 4),
+          point_arg = list(size = 2)
+          ) +
+  
+  scale_color_manual(
+    values = c("L1" = "darkblue", "L2" = "darkorange", "L3" = "darkgreen")
+    ) +
+  
+  theme_bw() +
+  theme(
+    legend.position = "bottom",
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank()
+    )
+```
+
+-   Error bars show within-factor variability (e.g., variability for Level within Experience groups) rather than allowing direct comparisons across different groups (e.g., between Experience groups)
+
+```{r speed_fig1}
+afex_plot(speed_anova, panel = 'Experience', x = 'Level',
+          mapping = c('shape'),
+          data_alpha = 0.35,
+          data_arg = list(size = 1.5, pch = 4),
+          point_arg = list(size = 2),
+          factor_levels = list(Level = c("Level 1", "Level 2", "Level 3"))
+          ) +
+  
+  labs(y = "Probability of making risky choices") +
+  
+  # scale_color_manual(
+  #   values = c("Shortcut" = "darkblue", "Penalty" = "darkorange", 
+  #              "Mixed" = "darkgreen")
+  #   ) +
+  
+  theme_bw() +
+  theme(
+    legend.position = "none",
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank()
+    )
+```
+
+```{r speed_fig2}
+afex_plot(speed_anova, x = 'Experience', panel = 'Level',
+          mapping = c('shape'),
+          data_alpha = 0.35,
+          data_arg = list(size = 1.5, pch = 4),
+          point_arg = list(size = 2),
+          factor_levels = list(Level = c("Level 1", "Level 2", "Level 3"))
+          ) +
+  
+  labs(y = "Probability of making risky choices") +
+  
+  # scale_color_manual(
+  #   values = c("Shortcut" = "darkblue", "Penalty" = "darkorange", 
+  #              "Mixed" = "darkgreen")
+  #   ) +
+  
+  theme_bw() +
+  theme(
+    legend.position = "none",
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank()
+    )
+```
