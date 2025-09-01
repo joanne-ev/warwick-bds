@@ -6,7 +6,7 @@ Signal Detection Theory models how individuals should optimise isolated decision
 
 **Keywords:** Signal Detection Theory, State-Dependent Detection Theory, Risk-Taking, Sequential Choices, Human Behaviour
 
-**Intended Journal:** [Evolutionary Behavioral Sciences](https://www.apa.org/pubs/journals/ebs/)
+**Intended Journal:** [Journal of Behavioural Decision Making](https://onlinelibrary.wiley.com/journal/10990771)
 
 -----------------
 
