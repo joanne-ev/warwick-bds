@@ -1,10 +1,10 @@
-# Current Report: A New Model Exploring Human Risk-Taking Responses to Diseases
+# Report Title: A New Model Exploring Financial Risk-Taking Responses to Infection
 
 ## Abstract
 
 Signal Detection Theory models how individuals should optimise isolated decision-making under uncertainty to maximise payoff. This theory supports the intuition that individuals are more risk-averse as danger increases. State-Dependent Detection Theory builds upon this theory by allowing individuals to make sequential (rather than isolated) decisions. Under certain conditions, this new state-dependent modelling can reverse the original findings of Signal Detection Theory. Applications beyond behavioural ecology, like human risk-taking in financial contexts, remain unexplored. Therefore, this report undergoes two phases of model development using financial reserves in an environment at risk of infection. The final model includes an additional option to remain at the current reserve level and new severity factors, such as survival after infection or unlucky infection despite correct choices. Results of the adapted model align more with Signal Detection Theory than with State-Dependent Detection Theory, and also reveal novel effects of parameters such as background mortality and unlucky infection on risk responses. Future work should extend the model to include autocorrelation and game theory.
 
-**Keywords:** Signal Detection Theory, State-Dependent Detection Theory, Risk-Taking, Sequential Choices, Human Behaviour
+**Keywords:** Signal Detection Theory, State-Dependent Detection Theory, Risk-Taking, Sequential Choices, Decision-Making, Human Behaviour
 
 **Intended Journal:** [Journal of Behavioural Decision Making](https://onlinelibrary.wiley.com/journal/10990771)
 
