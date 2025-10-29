@@ -1,0 +1,747 @@
+---
+title: "PS941 Practical Report"
+author: '5637058'
+output: pdf_document
+header-includes:
+  \usepackage{fvextra}
+  \DefineVerbatimEnvironment{Highlighting}{Verbatim}{breaklines,commandchars=\\\{\}}
+---
+
+# Challenge 1 - Data Scraping
+
+Your task is to develop a short step-by-step tutorial demonstrating how to scrape data from the '<https://books.toscrape.com/>' website.
+
+In your tutorial, you should first describe potential ethical issues associated with scraping online resources. Make sure that you explain how someone could determine whether scraping data from the `books.toscrape` website is allowed (and possible).
+
+In your tutorial you need to explain how to make custom GET requests to `books.toscrape` using the `httr2` package. Carefully annotate your code, explaining how to customize your request (e.g., by changing its header). Second, you will need to build a custom function that uses `rvest` and CSS selectors to extract data about each book's title, price, and star rating. Finally, you should create a crawler function for a given category (e.g., science fiction, romance) of books. In other words, you should write a wrapper function that sends a request and parses data received from the server. Ultimately, your objective should be to define a crawler function in a format similar to the template below:
+
+```{r wc_template, eval=FALSE, echo=TRUE}
+scrape_book_data <- function(category){
+
+    # Part 1
+    # Make a request using httr2
+
+    # Part 2
+    # Extract data about each book's title, price, and star rating
+
+    # Part 3
+    # Perform the above steps for every page of results available for a given category of books
+
+    # Return a data.frame object with the results
+}
+```
+
+In order to obtain full mark for this challenge, your crawler must be functional. That is, I should be able to run your function to obtain a `data.frame` containing all results for a single category of books.
+
+You can also achieve extra marks for explaining how to make your scraper more robust. For example, you may consider how your scraper should behave if it encounters a specific HTTP error, or how to avoid overloading the server with too many requests, or how your scraper function could prevent a person from scraping the same data twice.
+
+\newpage
+
+## Challenge 1 Answer
+
+### Potential Ethical Issues
+
+*In your tutorial, you should first describe potential ethical issues associated with scraping online resources. Make sure that you explain how someone could determine whether scraping data from the `books.toscrape` website is allowed (and possible).*
+
+All web scrapping endeavors must be ethical. Being ethical means adhering by some rules to keep the web scrapping process transparent and avoid potentially private data being scrapped. Some rules include utilising APIs when available, requesting data at a reasonable rate (i.e., not to be confused for a DDoS attack), only saving data that is absolutely required and ensuring data is being used to create new value not to duplicate it along with others.
+
+To check if scraping is allowed or even possible on [books.toscrape.com](https://books.toscrape.com/), look for its `robots.txt` file. This can be done by adding `robots.txt` to the homepage website link (e.g., <https://books.toscrape.com/robots.txt>). Looking at this website there does not appear to be an available `robots.txt` file; this file specifies certain rules concerning the behaviour of crawlers, bots, and scrapers. However, just as the presence of a `robots.txt` file does not prevent you from scrapping the absence of this file does not necessarily mean scrapping of this site is allowed. It is up to the scrapper (i.e., the user) to do the proper due diligence before beginning the scrapping process.
+
+\newpage
+
+### Tutorial
+
+*In your tutorial you need to explain how to make custom GET requests to `books.toscrape` using the `httr2` package. Carefully annotate your code, explaining how to customize your request (e.g., by changing its header). Second, you will need to build a custom function that uses `rvest` and CSS selectors to extract data about each book's title, price, and star rating. Finally, you should create a crawler function for a given category (e.g., science fiction, romance) of books. In other words, you should write a wrapper function that sends a request and parses data received from the server. Ultimately, your objective should be to define a crawler function in a format similar to the template below:*
+
+```{r web_crawler, message=FALSE}
+scrape_book_data <- function(category) {
+  
+  ### Step 1: Load the necessary libraries ###
+  library(rvest)
+  library(httr2)
+  library(tidyverse)
+  
+  
+  ### Step 2: Make an initial request from the homepage ###
+  category <- category %>% tolower()   # standardise input to be lowercase
+  
+  base_website <- 'https://books.toscrape.com/'   # home page website
+
+  # GET request (with custom headers)
+  og_req <- request(base_website) %>% 
+    req_headers(
+      Name = "5637058",
+      Accept = "text/html"
+    )
+  
+  # POST response
+  og_resp <- og_req %>%
+    req_perform()
+  
+  Sys.sleep(runif(1, 1, 3))   # random delay between 1 and 3 seconds to avoid overloading the server with too many requests
+
+  # Extract data (i.e., categories and associated links)
+  categories <- og_resp %>%
+    resp_body_html() %>%
+    html_elements(".nav-list ul a") %>% 
+    html_text2() %>% 
+    tolower()
+  
+  n <- length(categories)   # number of categories
+  
+  links <- og_resp %>%
+    resp_body_html() %>%
+    html_elements(".nav-list ul a") %>% 
+    html_attr("href")
+  
+  
+  ### Step 3: Extracting data (i.e., prices, titles, ratings) from specific categories
+  for (i in seq(1, n)) {
+
+    cat <- categories[i]
+
+    ### Step 3a: Identify category from input ###
+    if (cat == category) {
+      
+      # Extract full category website
+      cat_website <- links[i]   # partial category website
+      website <- paste0(base_website, cat_website)   # full category website
+      
+      # GET request
+      req <- request(website) %>%
+        req_headers(
+          Name = "5637058",
+          Accept = "text/html"
+        )
+      
+      # POST response
+      resp <- req %>%
+        req_perform()
+      
+      Sys.sleep(runif(1, 1, 3))
+      
+      # Identify the number of pages for the category
+      pages <- resp %>%
+        resp_body_html() %>%
+        html_elements(".current") %>%
+        html_text2()
+
+      page <- str_extract(pages, "\\d+$") %>% as.numeric()   # extract number of pages
+      
+      
+      ### Step 3b: If there is more than one page, loop through each page and extract information ###
+      if (length(page) > 0 ) {
+        
+        # Loop through each page
+        for (j in seq(1, page)) {
+          
+          # Create website link for each page
+          cat_website <- gsub("/index.html", "", cat_website)
+          website3 <- paste0(base_website, cat_website, "/page-", j, ".html")
+
+          # GET request
+          req3 <- request(website3) %>%
+            req_headers(
+              Name = "5637058",
+              Accept = "text/html"
+            )
+          
+          # POST response
+          resp3 <- req3 %>%
+            req_perform()
+          
+          Sys.sleep(runif(1, 1, 3))
+
+          # Extract information
+          prices <- resp3 %>%
+            resp_body_html() %>%
+            html_elements(".price_color") %>%
+            html_text2()
+
+          titles <- resp3 %>%
+            resp_body_html() %>%
+            html_elements("h3 a") %>%
+            html_attr("title")
+
+          ratings <- resp3 %>%
+            resp_body_html() %>%
+            html_elements(".star-rating") %>%
+            html_attr("class")
+          
+          # Rename ratings to follow format '#number of stars# stars'
+          ratings <- ratings %>% 
+            gsub("star-rating ", "", .) %>% 
+            paste(., "stars")
+          
+          # Put all information in a table
+          table <- data.frame(
+            Title = titles,
+            Price = prices,
+            Rating = ratings
+          )
+
+          print(table)   # print table
+
+        }
+        
+      }
+      
+      
+      ### Step 3b: If there is only one page, loop through that page and extract information ###
+      else {
+
+        prices <- resp %>%
+            resp_body_html() %>%
+            html_elements(".price_color") %>%
+            html_text2()
+
+          titles <- resp %>%
+            resp_body_html() %>%
+            html_elements("h3 a") %>%
+            html_attr("title")
+
+          ratings <- resp %>%
+            resp_body_html() %>%
+            html_elements(".star-rating") %>%
+            html_attr("class")
+
+          ratings <- ratings %>% gsub("star-rating ", "", .) %>% paste(., "stars")
+
+          table <- data.frame(
+            Title = titles,
+            Price = prices,
+            Rating = ratings
+          )
+
+          print(table)
+
+      }
+
+    }
+
+  }
+
+}
+```
+
+```{r wc_scifi}
+scrape_book_data("science fiction")
+```
+
+```{r wc_fiction}
+scrape_book_data("romance")
+```
+
+\newpage
+
+# Challenge 2 - Fitting the Right Model
+
+For your second challenge, you will need to demonstrate how underfitting and overfitting can impact the Mean Squared Error (MSE) of different regression models. For this challenge, you will work with a synthetic dataset generated by the R code provided below (but feel free to modify the data generation process if you wish). The 3D plot of these data are shown below.
+
+Your response should include description and R code necessary to achieve the following:
+
+**Data Generation**: Use the provided code to generate your dataset. You are welcome to adjust the code to create different data if you would like to experiment.
+
+**Model Fitting and Cross-Validation**: Perform k-fold cross-validation (e.g., 5-fold or 10-fold) on your *entire* dataset.
+
+**Model Design**: Within the cross-validation procedure, fit different versions of the linear regression models (varying their complexity). Design these models such that you can achieve the following outcomes:
+
+-   *Underfitting*: A model that is too simple to capture the underlying patterns in the data.
+-   *Good Fit*: A model that appropriately captures the underlying patterns without overfitting.
+-   *Overfitting*: A model that is too complex and fits the noise in the data, rather than the true underlying relationship.
+
+**Cross-validation Evaluation**: For each model type (underfitting, good fit, overfitting), calculate the average MSE across all k folds of your cross-validation.
+
+**Reporting**: Report the average MSE for each model type. Explain how the model complexity relates to the MSE. Discuss how underfitting and overfitting manifest themselves in the MSE values.
+
+You can obtain extra marks if you can include a visualization of overfitting and underfitting.
+
+\newpage
+
+## Challenge 2 Answers
+
+```{r library2, message=FALSE}
+library(tidyverse)
+library(caret) 
+library(glmnet)
+```
+
+### Data Generation
+
+***Data Generation**: Use the provided code to generate your dataset. You are welcome to adjust the code to create different data if you would like to experiment.*
+
+```{r data2, echo=TRUE}
+set.seed(123)
+
+# Number of data points
+n <- 1000
+
+# Generate x values
+x <- seq(0, 2*pi, length.out = n)
+
+# Generate the true y values
+y_true <- 3*sin(x) + 7
+
+# Generate y values (y_true with random noise)
+y <- y_true + rnorm(n, sd = 3)
+
+# Combine everything into a single data frame
+data <- data.frame(x = x, y = y, y_true = y_true)
+
+# Rearrange columns
+data <- data %>% 
+  mutate(id = seq_along(1:n)) %>% 
+  select(id, everything())
+
+data %>% head()
+```
+
+### **Model Fitting and Cross-Validation**
+
+***Model Fitting and Cross-Validation**: Perform k-fold cross-validation (e.g., 5-fold or 10-fold) on your entire dataset.*
+
+```{r kfold_split}
+# Split into four training and one test dataset (i.e., five-fold)
+train1 <- sample(1:1000, 200, replace = FALSE)   # sample from 1 to 1000
+remaining_nums <- setdiff(1:1000, train1)   # remove sampled numbers from original choices
+
+train2 <- sample(remaining_nums, 200, replace = FALSE)   # sample from remaining numbers
+remaining_nums <- setdiff(1:1000, c(train1, train2))   # remove sampled numbers from the remaining numbers
+
+train3 <- sample(remaining_nums, 200, replace = FALSE)
+remaining_nums <- setdiff(1:1000, c(train1, train2, train3))
+
+train4 <- sample(remaining_nums, 200, replace = FALSE)
+remaining_nums <- setdiff(1:1000, c(train1, train2, train3, train4))
+
+test <- sample(remaining_nums, 200, replace = FALSE)
+
+train1_df <- data[train1, ]
+train2_df <- data[train2, ]
+train3_df <- data[train3, ]
+train4_df <- data[train4, ]
+
+train_index <- c(train1, train2, train3, train4)
+train_df <- data[train_index, ]
+test_df <- data[test, ]
+
+train_df <- train_df %>% 
+  mutate(dataset = 'train')
+
+test_df <- test_df %>% 
+  mutate(dataset = 'test')
+
+train_test_df <- rbind(train_df, test_df)
+
+train_test_df %>% head()
+```
+
+```{r data_plot}
+ggplot(train_test_df, aes(x = x, y = y, col = dataset)) + 
+  geom_point() + 
+  labs(col = "Dataset") + 
+  theme_minimal()
+```
+
+### **Model Design**
+
+***Model Design**: Within the cross-validation procedure, fit different versions of the linear regression models (varying their complexity). Design these models such that you can achieve the following outcomes:*
+
+-   *Underfitting: A model that is too simple to capture the underlying patterns in the data.*
+-   *Good Fit: A model that appropriately captures the underlying patterns without overfitting.*
+-   *Overfitting: A model that is too complex and fits the noise in the data, rather than the true underlying relationship.*
+
+```{r fit_predict}
+# Fit model to training data
+underfit <- lm(y ~ poly(x, 1), data = train_df)          
+goodfit <- lm(y ~ poly(x, 3), data = train_df) 
+overfit <- lm(y ~ poly(x, 20), data = train_df)
+
+# Predict using test data
+test_df$underfit_pred <- predict(underfit, newdata = test_df)
+test_df$goodfit_pred <- predict(goodfit, newdata = test_df)
+test_df$overfit_pred <- predict(overfit, newdata = test_df)
+
+test_df %>% head()
+```
+
+```{r model_plot}
+ggplot(test_df) + 
+  geom_point(aes(x = x, y = underfit_pred)) + 
+  geom_point(aes(x = x, y = y), color = 'darkgrey', alpha = 0.5) +
+  labs(title = "Underfit model") +
+  theme_minimal()
+
+ggplot(test_df) + 
+  geom_point(aes(x = x, y = goodfit_pred)) + 
+  geom_point(aes(x = x, y = y), color = 'darkgrey', alpha = 0.5) +
+  labs(title = "Goodfit model") +
+  theme_minimal()
+
+ggplot(test_df) + 
+  geom_point(aes(x = x, y = overfit_pred)) + 
+  geom_point(aes(x = x, y = y), color = 'darkgrey', alpha = 0.5) +
+  labs(title = "Overfit model") +
+  theme_minimal()
+```
+
+### **Cross-validation Evaluation**
+
+***Cross-validation Evaluation**: For each model type (underfitting, good fit, overfitting), calculate the average MSE across all k folds of your cross-validation.*
+
+```{r cv_eval_func}
+fit_predict <- function(train_set, test_set, degree) {
+  
+  # Fit model
+  model <- lm(y ~ poly(x, degree), data = train_set)
+  
+  # Predict on test set
+  predictions <- predict(model, newdata = test_set)
+  
+  # Calculate MSE for k-fold cv
+  mse <- (sum((test_set$y - predictions)^2))/5
+  
+  return(mse)
+}
+```
+
+```{r cv_eval_uf}
+# Underfit 
+degree = 1
+
+mse1 <- fit_predict(train1_df, test_df, degree = degree)  # Train on fold 1
+mse2 <- fit_predict(train2_df, test_df, degree = degree)  # Train on fold 2
+mse3 <- fit_predict(train3_df, test_df, degree = degree)  # Train on fold 3
+mse4 <- fit_predict(train4_df, test_df, degree = degree)  # Train on fold 4
+
+# MSE
+mse_uf <- c(mse1, mse2, mse3, mse4)
+mean_mse_uf <- mean(mse_uf)
+
+print("Underfit")
+
+for (i in seq(4)) {
+  print(paste("MSE for fold", i, ":", mse_uf[i]))
+}
+
+print(paste("Average MSE across all folds:", mean_mse_uf)) 
+```
+
+```{r cv_eval_gf}
+# Goodfit
+degree = 3
+
+mse1 <- fit_predict(train1_df, test_df, degree = degree) 
+mse2 <- fit_predict(train2_df, test_df, degree = degree)
+mse3 <- fit_predict(train3_df, test_df, degree = degree)
+mse4 <- fit_predict(train4_df, test_df, degree = degree)
+
+# MSE
+mse_gf <- c(mse1, mse2, mse3, mse4)
+mean_mse_gf <- mean(mse_gf)
+
+print("Goodfit")
+for (i in seq(4)) {
+  print(paste("MSE for fold", i, ":", mse_gf[i]))
+}
+print(paste("Average MSE across all folds:", mean_mse_gf)) 
+```
+
+```{r cv_eval_of}
+# Overfit
+degree = 20
+
+mse1 <- fit_predict(train1_df, test_df, degree = degree) 
+mse2 <- fit_predict(train2_df, test_df, degree = degree)
+mse3 <- fit_predict(train3_df, test_df, degree = degree)
+mse4 <- fit_predict(train4_df, test_df, degree = degree)
+
+# MSE
+mse_of <- c(mse1, mse2, mse3, mse4)
+mean_mse_of <- mean(mse_of)
+
+print("Overfit")
+for (i in seq(4)) {
+  print(paste("MSE for fold", i, ":", mse_of[i]))
+}
+print(paste("Average MSE across all folds:", mean_mse_of)) 
+```
+
+### **Reporting**
+
+***Reporting**: Report the average MSE for each model type. Explain how the model complexity relates to the MSE. Discuss how underfitting and overfitting manifest themselves in the MSE values.*
+
+1.  Underfit: 430.38
+2.  Good fit: 371.09
+3.  Overfit: 113797.42
+
+The greater the complexity the more likely for the MSE to be higher. This positive relationship between complexity and MSE can be attributed to *overfitting* whereby the model fits to not just the training data but the noise within this data as well. Therefore, this more complex model may have lower MSE with training data but greater MSE when predicting on test data. However, even extremely simple models can lead to greater MSE as they often *underfit* the model whereby they are less likely to capture important relationships within the data.
+
+\newpage
+
+# Challenge 3 - NLP and Classification
+
+In your third challenge, your task is to build a language-based classification model.
+
+In this challenge, you will be analysing a dataset containing social media posts on the topic of global warming. This dataset is provided to you (file called `ClimatePosts.csv` available on Moodle). This dataset includes messages posted by individuals who self-identify as those who believe that human activities are responsible for climate change (`believers`), as well as those who are skeptical about such claims (`sceptics`). User identity is provided in the column labeled `views`.
+
+Your task is to construct classification models that could identify user type based on the content of their posts. There are two types of models that you need to construct and fit to this dataset.
+
+1.  **Top-down model** - to define your model, you must identify a psychological construct that you want to use in your prediction. You will need to define a list of tokens and then use this dictionary to obtain a score for each social media post. For example, you could calculate the relative frequency of particular term(s) appearing in each post, or use norms (e.g., like the norms developed by [Warriner and colleagues](https://link.springer.com/article/10.3758/s13428-012-0314-x)) to score each post on some variable (e.g., dominance, valence). You are completely free to choose any psychological constructs (e.g., sentiment, certainty, emotional tone) as long as you provide some rationale for your choice.
+
+2.  **Bottom-up model** - to build this model, you will need to use a TF-IDF based on the entire vocabulary in the dataset. In order to fit this model, you will need to use a regularized regression, such as Ridge or Lasso.
+
+The overall structure of your response to this challenge should be as follows:
+
+1.  Load the data into R and pre-process (e.g., remove punctuation, lowercase, etc.) it for the purpose of text analysis.
+
+2.  Define features of your top-down model. Clearly explain how your scoring algorithm works.
+
+3.  Construct a TF-IDF for the bottom-up model.
+
+4.  Fit both the top-down and bottom-up models to your data. Use k-fold cross-validation to tune your regularization parameter.
+
+5.  Inspect and evaluate your results. For assessing the models' overall performance, you could report the confusion matrix. For the top-down model, you may want to report (and visualize) the influence or importance of your chosen features. For the bottom-up model, you can report (and visualize) the most predictive tokens from your model (i.e., those with the largest absolute coefficient values).
+
+Extra points will be awarded for creative use of graphs and plots to summarize your results (e.g., ROC curve to visualize model accuracy). You are also encouraged to introduce text pre-processing steps (e.g., removing stop words, lemmatizing text, etc.).
+
+## Challenge 3 Answers
+
+```{r library3, message = FALSE}
+library(tidyverse)
+library(data.table)
+library(tm)
+library(quanteda)
+library(quanteda.textstats)
+library(quanteda.corpora)
+library(glmnet)
+```
+
+```{r data3, message = FALSE}
+
+data_cp <- read_csv("ClimatePosts.csv")
+
+data_cp <- data_cp %>% 
+  select(id, post, views)   # rearrange columns
+
+head(data_cp)
+dim(data_cp)
+```
+
+```{r preprocessing}
+
+# Remove non alpha numeric symbols
+data_cp$post <- gsub("[^[:alnum:] ]", "", data_cp$post)
+
+# Remove numbers
+data_cp$post <- gsub("[0-9]", "", data_cp$post)
+
+# Remove hyperlinks
+data_cp$post <- gsub("http\\S+\\s*", "", data_cp$post)
+
+# Remove stop words?
+stopwords <- stopwords("en")   # get English stopwords (e.g., "the", "is", "and")
+data_cp$post <- removeWords(data_cp$post, stopwords)
+
+# Remove blank spaces
+data_cp$post <- gsub("\\s+", " ", data_cp$post)
+data_cp$post <- trimws(data_cp$post)
+
+# Convert text to lowercase
+data_cp$post <- tolower(data_cp$post)
+
+# After preprocessing
+data_cp$post[1:5]
+```
+
+```{r colloquations}
+# Convert each word into a token
+cp_tokens <- tokens(data_cp$post, remove_punct = TRUE)
+cp_tokens<- tokens_tolower(cp_tokens)
+
+# Identifying colloquations
+colqs <- tokens_select(
+  cp_tokens, 
+  pattern = "^[a-z]",   # only selects words that start with a lowercase letter
+  valuetype = "regex",   # `pattern` is a regular expression
+  case_insensitive = TRUE
+) %>%
+  textstat_collocations(min_count = 15)   # identify colloquations that appear at least 15 times in the text
+
+print(colqs)
+
+post_colqs <- colqs$collocation
+
+# Join all identified colloquations
+for (colloquations in post_colqs) {
+  
+  joined_colqs <- gsub(" ", "_", colloquations)
+  
+  data_cp$post <- str_replace_all(
+      data_cp$post,
+      colloquations,
+      joined_colqs
+    )
+}
+```
+
+```{r colloquations_check}
+# Code check
+grep("_", data_cp$post, value = TRUE)[1:5]
+```
+
+### Top-down model
+
+***Top-down model** - to define your model, you must identify a psychological construct that you want to use in your prediction. You will need to define a list of tokens and then use this dictionary to obtain a score for each social media post. For example, you could calculate the relative frequency of particular term(s) appearing in each post, or use norms (e.g., like the norms developed by [Warriner and colleagues](https://link.springer.com/article/10.3758/s13428-012-0314-x)) to score each post on some variable (e.g., dominance, valence). You are completely free to choose any psychological constructs (e.g., sentiment, certainty, emotional tone) as long as you provide some rationale for your choice.*
+
+**NOTE: Tabula would not allow `.zip` files as submission so the `.csv` file used in the code below is not included as part of the final submission. However, the data is available through the [electronic supplementary material](https://link.springer.com/article/10.3758/s13428-012-0314-x#SecESM1) from Warriner, A. B., Kuperman, V., & Brysbaert, M. (2013). Norms of valence, arousal, and dominance for 13,915 English lemmas. *Behavior research methods*, *45*, 1191-1207.**
+
+Warriner et al. (2013) defined *arousal* as "the intensity of emotion provoked by a stimulus" (page 1191). Arousal was chosen as the main psychological construct as climate change often elicits intense emotional responses from both skeptics and believers. Therefore, it would be interesting to understand whether there is a difference in the arousal scores of the posts between the two groups.
+
+```{r arousal, message = FALSE}
+# Import norms
+norms <- read_csv("BRM-emot-submit.csv")
+
+# Identify different norms 
+norms_words <- norms$Word
+norms_arousal <- norms$A.Mean.Sum
+
+# Create dictionary
+arousal_dict <- setNames(norms_arousal, norms_words)
+
+# Create tokens
+word_tokens <- tokens(data_cp$post)
+
+# Function to calculate average arousal score for one tokenised text
+arousal_scores <- function(tokens, dict) {
+
+  score <- dict[tokens]   # retrieve scores for tokens
+  score <- score[!is.na(score)]   # remove words not in dictionary 
+  if (length(score) == 0) return(NA)  # if no tokens have a score in the dictionary 
+  return(mean(score))   # return mean score
+  
+}
+
+# Apply the function to each tokenised post in the corpus
+cp_arousal <- data_cp
+
+cp_arousal['arousal'] <- sapply(
+  word_tokens, 
+  arousal_scores, 
+  dict = arousal_dict
+)
+
+head(cp_arousal)
+```
+
+```{r arousal_mean}
+# Calculate mean
+cp_arousal_mean <- cp_arousal %>% 
+  group_by(views) %>% 
+  summarise( arousal_mean = mean(arousal, na.rm = TRUE) )
+```
+
+```{r arousal_plot}
+# Boxplot
+ggplot(cp_arousal, aes(x = factor(views), y = arousal)) +
+  geom_boxplot(na.rm = TRUE) +
+  labs(x = "Views", y = "Arousal scores", title = "Mean Arousal Scores by Views") 
+```
+
+```{r arousal_ttest}
+t.test(arousal ~ views, data = cp_arousal)
+```
+
+```{r arousal_calc}
+# Find the text with the lowest and highest scores for each norm
+lowest_norm <- cp_arousal[which.min(cp_arousal$arousal), ]
+highest_norm <- cp_arousal[which.max(cp_arousal$arousal), ]
+
+cat("Text with the highest arousal score is a", highest_norm$views , "view scoring", highest_norm$arousal, ":\n\n", highest_norm$post, "\n\n\n")
+
+cat("Text with the lowest arousal score is a", lowest_norm$views , "view scoring", lowest_norm$arousal, ":\n\n", lowest_norm$post)
+```
+
+### Bottom-up approach
+
+***Bottom-up model** - to build this model, you will need to use a TF-IDF based on the entire vocabulary in the dataset. In order to fit this model, you will need to use a regularized regression, such as Ridge or Lasso.*
+
+```{r corpus_object}
+cp_new <- corpus(cp_arousal, text_field = "post")
+
+summary(cp_new, 5)
+```
+
+```{r dfm}
+cp_new_tokens <- tokens(
+  cp_new, 
+  remove_punct = TRUE,
+  remove_symbols = TRUE,
+  remove_numbers = TRUE,
+  remove_url = TRUE
+)
+
+cp_new_dfm <- dfm(cp_new_tokens)   # create a document feature matrix
+
+word_freq <- textstat_frequency(cp_new_dfm, n = 5)   # identifies top 5 most frequent words
+
+head(word_freq)
+
+# Visualise most frequent words
+cp_new_dfm %>% 
+  textstat_frequency(n = 15) %>% 
+  ggplot(aes(x = reorder(feature, frequency), # sorts features based on ascending frequency
+             y = frequency)) + 
+  geom_point() +
+  labs(x = NULL, y = "Frequency") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) 
+```
+
+```{r tf_idf}
+dfm_tfidf <- dfm_tfidf(cp_new_dfm)
+print(dfm_tfidf)
+```
+
+```{r important_words}
+top_features <- topfeatures(dfm_tfidf, n = 15)   # extracts the 15 most important words based on their TF-IDF scores
+
+important_words <- data.frame(
+  feature = names(top_features),
+  score = top_features
+)
+
+ggplot(important_words, aes(x = reorder(feature, score), y = score)) +
+  geom_point() +
+  labs(x = NULL, y = "TF-IDF Score") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) 
+```
+
+```{r ridge}
+# Ridge regression
+cp_new_dfm <- cp_new_dfm[!is.na(cp_new_dfm$arousal), ]   # remove na 
+
+X <- as.matrix(cp_new_dfm)
+y <- cp_new_dfm$arousal
+
+cp_ridge <- cv.glmnet(X, y, alpha = 0)
+cp_ridge <- glmnet(X, y, alpha = 0, lambda = cp_ridge$lambda.min)
+cp_ridge_coef <- coef(cp_ridge)
+
+cp_ridge_coef %>% max()   # the result is the intercept
+
+colnames(cp_ridge_coef) 
+
+sort(cp_ridge_coef, decreasing = TRUE)[2]
+
+cp_ridge_coef
+```
+
+### Inspect & Evaluate Results
+
+*Inspect and evaluate your results. For assessing the models' overall performance, you could report the confusion matrix. For the top-down model, you may want to report (and visualize) the influence or importance of your chosen features. For the bottom-up model, you can report (and visualize) the most predictive tokens from your model (i.e., those with the largest absolute coefficient values).*
+
+For the top-down model, a Welch two-sample t-test was conducted and found no significant difference in the group arousal means between the believer (*M* = 4.34) and sceptic (*M =* 4.23) groups. Text with the highest arousal score (5.83) is a believer view: "global_warming real threat rising_temperatures alarming we_need action now climatechange". Text with the lowest arousal score (2.94) is a sceptic view: "my nose frozen coldweather winter".
+
+For the bottom-up model, the most predictive token was destructive with a coefficient of 0.240.
