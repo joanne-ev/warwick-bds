@@ -7,5 +7,5 @@ My modules
 - PS923 Methods & Analysis of Behavioural Science
 - PS938 Integrated Behavioural & Data Science
 - PS931 Bayesian Approaches in Behavioural Science
-- PS941 Computational Behavioural and Social Science
 - PS939 Research Project
+- PS941 Computational Behavioural and Social Science
